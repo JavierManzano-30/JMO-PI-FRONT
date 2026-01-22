@@ -56,13 +56,13 @@ export function PublicLayout() {
             </div>
             <div className="footer-social">
               <span className="social-icon">
-                <img src="/img/instagram.svg" alt="Instagram" />
+                <img src="/assets/icons/instagram.svg" alt="Instagram" />
               </span>
               <span className="social-icon">
-                <img src="/img/x.jpg" alt="X" />
+                <img src="/assets/icons/x.jpg" alt="X" />
               </span>
               <span className="social-icon">
-                <img src="/img/facebook.png" alt="Facebook" />
+                <img src="/assets/icons/facebook.png" alt="Facebook" />
               </span>
             </div>
           </div>

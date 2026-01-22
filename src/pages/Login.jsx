@@ -57,7 +57,7 @@ export function Login() {
             {status === 'loading' ? 'Cargando...' : 'Login'}
           </button>
           <div className="helper">
-            No tienes cuenta? <Link to="/register">Registrate</Link>
+            No tienes cuenta? <Link className="text-link" to="/register">Registrate</Link>
           </div>
         </form>
         {status === 'error' && (

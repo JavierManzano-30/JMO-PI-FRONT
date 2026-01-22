@@ -16,7 +16,7 @@ export function AuthProvider({ children }) {
     bio: 'Contadora de historias visuales',
     city: 'Sevilla',
     category: 'Urbano',
-    avatar: '/img/foto-perfil.jpg',
+    avatar: '/assets/photos/foto-perfil.jpg',
   });
 
   useEffect(() => {

@@ -29,9 +29,11 @@ export function PrivateLayout() {
           <NavLink className={navClass} to="/app/profile">
             Perfil
           </NavLink>
-          <div className="auth-actions header-auth">
-            <span className="helper">Hola, {user?.name}</span>
-            <img className="avatar" src={profile.avatar} alt="Perfil" />
+          <div className="header-user-block">
+            <div className="header-user">
+              <span className="helper">Hola, {user?.name}</span>
+              <img className="avatar" src={profile.avatar} alt="Perfil" />
+            </div>
             <button className="btn ghost" type="button" onClick={logout}>
               Cerrar sesion
             </button>
@@ -59,13 +61,13 @@ export function PrivateLayout() {
             </div>
             <div className="footer-social">
               <span className="social-icon">
-                <img src="/img/instagram.svg" alt="Instagram" />
+                <img src="/assets/icons/instagram.svg" alt="Instagram" />
               </span>
               <span className="social-icon">
-                <img src="/img/x.jpg" alt="X" />
+                <img src="/assets/icons/x.jpg" alt="X" />
               </span>
               <span className="social-icon">
-                <img src="/img/facebook.png" alt="Facebook" />
+                <img src="/assets/icons/facebook.png" alt="Facebook" />
               </span>
             </div>
           </div>

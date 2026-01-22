@@ -42,7 +42,7 @@ export function UploadPhoto() {
       </div>
       <div className="card">
         <h3 className="card-title">Vista previa</h3>
-        <img className="hero-image" src="/img/imagen1.jpg" alt="Vista previa" />
+        <img className="hero-image" src="/assets/photos/imagen1.jpg" alt="Vista previa" />
         <p className="helper" style={{ marginTop: 12 }}>
           Formatos admitidos: JPG, PNG. Max 8MB.
         </p>

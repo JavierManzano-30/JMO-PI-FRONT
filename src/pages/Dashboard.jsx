@@ -15,6 +15,15 @@ export function Dashboard() {
   const [params] = useSearchParams();
   const state = params.get('state') || 'default';
   const page = params.get('page') || '1';
+  const pageNumber = Number(page) || 1;
+  const totalPages = 47;
+  const prevPage = Math.max(1, pageNumber - 1);
+  const nextPage = Math.min(totalPages, pageNumber + 1);
+  const windowPages = [
+    Math.max(1, pageNumber - 1),
+    pageNumber,
+    Math.min(totalPages, pageNumber + 1),
+  ].filter((value, index, self) => self.indexOf(value) === index);
 
   const orderedPhotos = page === '2' ? [...photos].reverse() : photos;
 
@@ -40,21 +49,45 @@ export function Dashboard() {
           </select>
         </div>
         <div className="filters-center pagination">
-          <span className="pagination-arrow">&lt;</span>
-          <Link className={`page-link ${page === '1' ? 'active' : ''}`} to="?page=1">
-            1
-          </Link>
-          <Link className={`page-link ${page === '2' ? 'active' : ''}`} to="?page=2">
-            2
-          </Link>
-          <Link className={`page-link ${page === '3' ? 'active' : ''}`} to="?page=3">
-            3
-          </Link>
-          <span className="pagination-ellipsis">...</span>
-          <Link className="page-link" to="?page=47">
-            47
-          </Link>
-          <span className="pagination-arrow">&gt;</span>
+          {pageNumber === 1 ? (
+            <span className="pagination-arrow disabled">&lt;</span>
+          ) : (
+            <Link className="pagination-arrow" to={`?page=${prevPage}`}>
+              &lt;
+            </Link>
+          )}
+          {pageNumber > 2 && (
+            <>
+              <Link className="page-link" to="?page=1">
+                1
+              </Link>
+              <span className="pagination-ellipsis">...</span>
+            </>
+          )}
+          {windowPages.map((value) => (
+            <Link
+              key={value}
+              className={`page-link ${pageNumber === value ? 'active' : ''}`}
+              to={`?page=${value}`}
+            >
+              {value}
+            </Link>
+          ))}
+          {pageNumber < totalPages - 1 && (
+            <>
+              <span className="pagination-ellipsis">...</span>
+              <Link className="page-link" to={`?page=${totalPages}`}>
+                {totalPages}
+              </Link>
+            </>
+          )}
+          {pageNumber === totalPages ? (
+            <span className="pagination-arrow disabled">&gt;</span>
+          ) : (
+            <Link className="pagination-arrow" to={`?page=${nextPage}`}>
+              &gt;
+            </Link>
+          )}
         </div>
         <div className="filters-right">
           <strong>Tema semanal:</strong> Paisajes espectaculares

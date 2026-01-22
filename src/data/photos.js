@@ -1,7 +1,7 @@
 export const photos = [
   {
     id: '01',
-    image: '/img/imagen1.jpg',
+    image: '/assets/photos/imagen1.jpg',
     user: 'Antonio123',
     city: 'Madrid',
     category: 'Naturaleza',
@@ -11,7 +11,7 @@ export const photos = [
   },
   {
     id: '02',
-    image: '/img/imagen2.jpg',
+    image: '/assets/photos/imagen2.jpg',
     user: 'LuisRGP',
     city: 'Cataluna',
     category: 'Naturaleza',
@@ -20,7 +20,7 @@ export const photos = [
   },
   {
     id: '03',
-    image: '/img/imagen3.jpg',
+    image: '/assets/photos/imagen3.jpg',
     user: 'JavierManzano123',
     city: 'Andalucia',
     category: 'Montana',
