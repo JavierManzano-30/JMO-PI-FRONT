@@ -31,7 +31,7 @@ export function PrivateLayout() {
           </NavLink>
           <div className="header-user-block">
             <div className="header-user">
-              <span className="helper">Hola, {user?.name}</span>
+              <span className="helper">Hola, {user?.display_name || user?.username || profile.name}</span>
               <img className="avatar" src={profile.avatar} alt="Perfil" />
             </div>
             <button className="btn ghost" type="button" onClick={logout}>

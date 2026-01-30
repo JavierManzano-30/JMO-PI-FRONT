@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext.jsx';
+import { updateProfile } from '../api/snapnation.js';
 
 export function ProfileEdit() {
   const navigate = useNavigate();
-  const { profile, setProfile } = useAuth();
+  const { profile, setProfile, token, refreshUser } = useAuth();
   const [form, setForm] = useState({
     name: profile.name,
     bio: profile.bio,
@@ -12,7 +13,9 @@ export function ProfileEdit() {
     category: profile.category,
   });
   const [photoPreview, setPhotoPreview] = useState(profile.avatar);
+  const [photoFile, setPhotoFile] = useState(null);
   const [status, setStatus] = useState('idle');
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -22,15 +25,22 @@ export function ProfileEdit() {
   const handlePhotoChange = (event) => {
     const file = event.target.files?.[0];
     if (!file) return;
+    setPhotoFile(file);
     const reader = new FileReader();
     reader.onload = () => setPhotoPreview(reader.result);
     reader.readAsDataURL(file);
   };
 
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setStatus('saving');
-    window.setTimeout(() => {
+    setErrorMessage('');
+    try {
+      if (!token) {
+        throw new Error('Necesitas iniciar sesión para guardar cambios.');
+      }
+      await updateProfile(token, { display_name: form.name, avatar: photoFile });
+      await refreshUser();
       setProfile({
         ...profile,
         name: form.name,
@@ -41,7 +51,10 @@ export function ProfileEdit() {
       });
       setStatus('success');
       navigate('/app/profile');
-    }, 700);
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(error.message || 'No se pudieron guardar los cambios.');
+    }
   };
 
   return (
@@ -104,6 +117,7 @@ export function ProfileEdit() {
           <label htmlFor="photo">Cambiar foto</label>
           <input id="photo" type="file" accept="image/*" onChange={handlePhotoChange} />
         </div>
+        {status === 'error' && <div className="status error">{errorMessage}</div>}
       </div>
     </div>
   );

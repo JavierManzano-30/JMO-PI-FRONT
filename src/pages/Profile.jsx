@@ -1,9 +1,13 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext.jsx';
 
 export function Profile() {
-  const { profile } = useAuth();
+  const { profile, user, refreshUser } = useAuth();
+
+  useEffect(() => {
+    refreshUser();
+  }, []);
 
   return (
     <div className="split">
@@ -12,20 +16,24 @@ export function Profile() {
         <p className="section-subtitle">Tus datos y estadisticas recientes.</p>
         <img className="avatar" src={profile.avatar} alt="Perfil" style={{ marginBottom: 12 }} />
         <div className="helper" style={{ marginBottom: 12 }}>
-          {profile.bio}
+          {profile.bio || 'Comparte tu historia visual con la comunidad.'}
         </div>
         <div className="list">
           <div className="list-item">
             <span>Nombre</span>
-            <strong>{profile.name}</strong>
+            <strong>{user?.display_name || user?.username || profile.name || 'Sin nombre'}</strong>
           </div>
           <div className="list-item">
-            <span>Categoria</span>
-            <strong>{profile.category}</strong>
+            <span>Email</span>
+            <strong>{user?.email || 'Sin email'}</strong>
           </div>
           <div className="list-item">
-            <span>Votos recibidos</span>
-            <strong>24</strong>
+            <span>Comunidad</span>
+            <strong>{user?.community_id ? `#${user.community_id}` : 'Sin comunidad'}</strong>
+          </div>
+          <div className="list-item">
+            <span>Rol</span>
+            <strong>{user?.role || 'user'}</strong>
           </div>
         </div>
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 18 }}>
