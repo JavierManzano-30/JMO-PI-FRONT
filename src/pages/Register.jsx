@@ -1,55 +1,110 @@
-import React from 'react';
-import { useSearchParams, Link } from 'react-router-dom';
-import { StateSwitcher } from '../components/StateSwitcher.jsx';
-
-const STATE_OPTIONS = [
-  { value: 'default', label: 'Normal' },
-  { value: 'error', label: 'Error' },
-  { value: 'fields', label: 'Campos' },
-];
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../components/AuthContext.jsx';
+import { ApiError } from '../lib/apiClient.js';
+import { listCommunities } from '../services/communitiesService.js';
 
 export function Register() {
-  const [params] = useSearchParams();
-  const state = params.get('state') || 'default';
+  const { register } = useAuth();
+  const navigate = useNavigate();
+  const [status, setStatus] = useState('idle');
+  const [error, setError] = useState('');
+  const [communities, setCommunities] = useState([]);
+  const [form, setForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    communityId: '',
+  });
+
+  useEffect(() => {
+    listCommunities({ limit: 100 })
+      .then((response) => setCommunities(response.data || []))
+      .catch(() => setCommunities([]));
+  }, []);
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setStatus('loading');
+    setError('');
+
+    try {
+      await register(form);
+      navigate('/app/dashboard');
+    } catch (requestError) {
+      if (requestError instanceof ApiError) {
+        setError(requestError.message);
+      } else {
+        setError('No se pudo registrar la cuenta');
+      }
+      setStatus('error');
+    }
+  };
 
   return (
     <div className="auth-layout">
       <div className="card auth-card">
         <h2 className="card-title">Registro</h2>
         <p className="card-subtle">Crea tu cuenta para participar en la galeria.</p>
-        <form className="form">
+        <form className="form" onSubmit={handleSubmit}>
           <div className="field">
-            <label htmlFor="name">Nombre completo</label>
-            <input id="name" type="text" placeholder="Alicia Romero" />
-          </div>
-          <div className="field">
-            <label htmlFor="user">Usuario</label>
-            <input id="user" type="text" placeholder="alicia88" />
+            <label htmlFor="username">Usuario</label>
+            <input
+              id="username"
+              type="text"
+              placeholder="alicia88"
+              value={form.username}
+              onChange={(event) => setForm((prev) => ({ ...prev, username: event.target.value }))}
+              required
+              minLength={3}
+            />
           </div>
           <div className="field">
             <label htmlFor="email">Email</label>
-            <input id="email" type="email" placeholder="alicia@mail.com" />
+            <input
+              id="email"
+              type="email"
+              placeholder="alicia@mail.com"
+              value={form.email}
+              onChange={(event) => setForm((prev) => ({ ...prev, email: event.target.value }))}
+              required
+            />
           </div>
           <div className="field">
             <label htmlFor="pass">Contrasena</label>
-            <input id="pass" type="password" placeholder="********" />
+            <input
+              id="pass"
+              type="password"
+              placeholder="********"
+              value={form.password}
+              onChange={(event) => setForm((prev) => ({ ...prev, password: event.target.value }))}
+              required
+              minLength={8}
+            />
           </div>
-          <button className="btn" type="button">
-            Crear cuenta
+          <div className="field">
+            <label htmlFor="community">Comunidad (opcional)</label>
+            <select
+              id="community"
+              value={form.communityId}
+              onChange={(event) => setForm((prev) => ({ ...prev, communityId: event.target.value }))}
+            >
+              <option value="">Sin comunidad</option>
+              {communities.map((community) => (
+                <option key={community.id} value={community.id}>
+                  {community.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button className="btn" type="submit" disabled={status === 'loading'}>
+            {status === 'loading' ? 'Creando...' : 'Crear cuenta'}
           </button>
           <div className="helper">
             Ya tienes cuenta? <Link to="/login">Inicia sesion</Link>
           </div>
         </form>
-        <div style={{ marginTop: 18 }}>
-          <StateSwitcher options={STATE_OPTIONS} current={state} />
-          {state === 'error' && (
-            <div className="status error">No se pudo registrar. Intenta de nuevo.</div>
-          )}
-          {state === 'fields' && (
-            <div className="status error">Completa los campos obligatorios.</div>
-          )}
-        </div>
+        {status === 'error' && <div className="status error">{error}</div>}
       </div>
     </div>
   );

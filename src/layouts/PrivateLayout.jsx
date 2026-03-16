@@ -1,9 +1,10 @@
 import React from 'react';
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../components/AuthContext.jsx';
 
 export function PrivateLayout() {
-  const { user, profile, logout } = useAuth();
+  const navigate = useNavigate();
+  const { user, logout } = useAuth();
   const navClass = ({ isActive }) => (isActive ? 'active' : undefined);
 
   return (
@@ -16,25 +17,36 @@ export function PrivateLayout() {
           <NavLink className={navClass} to="/app/dashboard">
             Inicio
           </NavLink>
-          <NavLink className={navClass} to="/app/photos/01">
+          <NavLink className={navClass} to="/app/dashboard">
             Galeria
           </NavLink>
           <div className="brand-text header-brand">
             <span className="brand-snap">Snap</span>
             <span className="brand-nation">Nation</span>
           </div>
-          <NavLink className={navClass} to="/unauthorized">
-            Ganadores
-          </NavLink>
+          {user?.role === 'admin' ? (
+            <NavLink className={navClass} to="/unauthorized">
+              Ganadores
+            </NavLink>
+          ) : (
+            <span className="header-link">Ganadores</span>
+          )}
           <NavLink className={navClass} to="/app/profile">
             Perfil
           </NavLink>
           <div className="header-user-block">
             <div className="header-user">
-              <span className="helper">Hola, {user?.name}</span>
-              <img className="avatar" src={profile.avatar} alt="Perfil" />
+              <span className="helper">Hola, {user?.displayName}</span>
+              <img className="avatar" src={user?.avatarUrl} alt="Perfil" />
             </div>
-            <button className="btn ghost" type="button" onClick={logout}>
+            <button
+              className="btn ghost"
+              type="button"
+              onClick={() => {
+                logout();
+                navigate('/login', { replace: true });
+              }}
+            >
               Cerrar sesion
             </button>
           </div>

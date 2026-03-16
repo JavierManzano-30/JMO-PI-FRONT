@@ -1,50 +1,39 @@
-# SnapNation · Sprint 8
+# SnapNation Frontend
 
-SPA en React + Vite con navegacion completa basada en el prototipo de Figma. Incluye rutas, layouts publico/privado, pantallas mock y estados de carga/error/vacio/exito.
+SPA en React + Vite integrada con el backend real (`JMO-PI-BACK`).
 
-## Mapa de rutas (Figma → React)
-| Ruta | Pantalla | Descripcion breve | Figma (imagen) |
-| --- | --- | --- | --- |
-| `/login` | Login | Acceso de usuarios con estados | `public/assets/figma/PC-Login.png`, `public/assets/figma/PC-LoginCargando.png`, `public/assets/figma/PC-LoginError.png` |
-| `/register` | Registro | Alta de usuario con errores | `public/assets/figma/PC-Register.png`, `public/assets/figma/PC-RegisterError.png`, `public/assets/figma/PC-RegisterErrorCampos.png` |
-| `/no-session` | Dashboard sin sesion | Estado sin autenticacion | `public/assets/figma/PC-DashboardSinsesion.png` |
-| `/app/dashboard` | Dashboard | Vista principal con estados | `public/assets/figma/PC-Dashboard.png`, `public/assets/figma/PC-DashboardCargando.png`, `public/assets/figma/PC-DashboardVacio.png` |
-| `/app/photos/:photoId` | Detalle foto | Votacion abierta | `public/assets/figma/PC-Detallefoto.png` |
-| `/app/photos/:photoId/closed` | Detalle foto (cerrada) | Votacion cerrada | `public/assets/figma/PC-DetallefotoVotacionCerrada.png` |
-| `/app/photos/upload` | Subir foto | Formulario de carga | `public/assets/figma/PC-Subirfoto.png` |
-| `/app/photos/upload/success` | Foto subida | Confirmacion de exito | `public/assets/figma/PC-Fotosubida.png` |
-| `/app/profile` | Perfil | Datos de usuario | `public/assets/figma/PC-Perfil.png` |
-| `/app/profile/edit` | Editar perfil | Formulario de edicion | `public/assets/figma/PC-PerfilEditar.png` |
-| `/unauthorized` | No autorizado | Estado 403 | n/a |
-| `*` | 404 | Pagina no encontrada | n/a |
+## Integracion real
+- API base configurable por entorno: `VITE_API_URL`.
+- Autenticacion JWT real contra backend (`/auth/register`, `/auth/login`).
+- Sesion persistida en `localStorage` y restaurada con `/users/me`.
+- Dashboard, detalle, subida de foto, votos y perfil consumen endpoints reales.
 
-## Layouts y rutas protegidas
-- Layout publico: login, registro y estado sin sesion.
-- Layout privado: dashboard, galeria, detalle, subir foto y perfil.
-- Proteccion mock con estado en memoria (`localStorage`) y credenciales de prueba.
+## Variable de entorno
+Crear `.env` en `JMO-PI-FRONT`:
 
-## Estados por pantalla
-- Login: `loading`, `error` (simulado).
-- Register: `error`, `fields`.
-- Dashboard: `loading`, `empty`, `error`, `success`.
-- Otros estados: 404 y 403.
+```bash
+VITE_API_URL=http://localhost:3000/api/v1
+```
 
-## Assets
-- Mockups Figma: `public/assets/figma`.
-- Fotos reales: `public/assets/photos`.
-- Iconos/logos: `public/assets/icons`.
-
-## Rutas de prueba rapidas
-- `/login` (credenciales: `javier` / `1234`)
-- `/register?state=error`
-- `/app/dashboard?state=loading`
-- `/app/dashboard?page=4`
-- `/app/photos/02`
-- `/app/photos/02/closed`
+## Mapa principal de rutas
+- `/login`
+- `/register`
+- `/no-session`
+- `/app/dashboard`
+- `/app/photos/:photoId`
+- `/app/photos/:photoId/closed`
+- `/app/photos/upload`
+- `/app/photos/upload/success`
+- `/app/profile`
+- `/app/profile/edit`
 
 ## Puesta en marcha
-- `npm install`
-- `npm run dev`
-- Abrir `http://localhost:5173`
+1. Levantar backend y base de datos (ver README de `JMO-PI-BACK`).
+2. En frontend:
 
-Autor: Javier Manzano Oliveros
+```bash
+npm install
+npm run dev
+```
+
+3. Abrir `http://localhost:5173`.

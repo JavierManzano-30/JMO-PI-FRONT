@@ -1,29 +1,51 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { getPhotoById } from '../data/photos.js';
+import { getPhotoById } from '../services/photosService.js';
+import { ApiError } from '../lib/apiClient.js';
 
 export function PhotoDetailClosed() {
   const { photoId } = useParams();
-  const photo = getPhotoById(photoId);
+  const [photo, setPhoto] = useState(null);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    getPhotoById(photoId)
+      .then(setPhoto)
+      .catch((requestError) => {
+        if (requestError instanceof ApiError) {
+          setError(requestError.message);
+        } else {
+          setError('No se pudo cargar la foto');
+        }
+      });
+  }, [photoId]);
+
+  if (error) {
+    return <div className="status error">{error}</div>;
+  }
+
+  if (!photo) {
+    return <div className="status loading">Cargando foto...</div>;
+  }
 
   return (
     <div className="split">
       <div className="card">
         <h2 className="section-title">Votacion cerrada</h2>
-        <p className="section-subtitle">La ronda termino. Resultados publicados.</p>
-        <img className="hero-image" src={photo.image} alt={`Foto de ${photo.user}`} />
+        <p className="section-subtitle">La ronda termino. Datos disponibles desde backend.</p>
+        <img className="hero-image" src={photo.image} alt={`Foto de ${photo.user?.displayName}`} />
         <div className="list">
           <div className="list-item">
-            <span>Puntaje final</span>
-            <strong>9.4</strong>
+            <span>Votos finales</span>
+            <strong>{photo.votes}</strong>
           </div>
           <div className="list-item">
-            <span>Posicion</span>
-            <strong>3 de 48</strong>
+            <span>Tema</span>
+            <strong>{photo.theme?.title}</strong>
           </div>
           <div className="list-item">
-            <span>Votos</span>
-            <strong>312</strong>
+            <span>Autor</span>
+            <strong>{photo.user?.displayName}</strong>
           </div>
         </div>
         <Link className="btn outline" to={`/app/photos/${photo.id}`} style={{ marginTop: 18 }}>
@@ -32,20 +54,9 @@ export function PhotoDetailClosed() {
       </div>
       <div className="card">
         <h3 className="card-title">Ganadores</h3>
-        <div className="list">
-          <div className="list-item">
-            <span>1. Clara Ruiz</span>
-            <strong>9.9</strong>
-          </div>
-          <div className="list-item">
-            <span>2. Pablo Montero</span>
-            <strong>9.6</strong>
-          </div>
-          <div className="list-item">
-            <span>3. Sofia Valdes</span>
-            <strong>9.4</strong>
-          </div>
-        </div>
+        <p className="helper">
+          El backend actual no expone ranking de ganadores en un endpoint consumible por esta vista.
+        </p>
       </div>
     </div>
   );

@@ -17,8 +17,12 @@ import { Forbidden } from './pages/Forbidden.jsx';
 import { NotFound } from './pages/NotFound.jsx';
 
 function RequireAuth({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, isBootstrapping } = useAuth();
   const location = useLocation();
+
+  if (isBootstrapping) {
+    return <div className="status loading">Restaurando sesion...</div>;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/no-session" state={{ from: location }} replace />;
