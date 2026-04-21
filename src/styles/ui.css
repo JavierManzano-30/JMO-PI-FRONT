@@ -1,0 +1,83 @@
+.btn-wide {
+  width: 100%;
+}
+
+.field-hint {
+  margin: 0;
+  color: #61718a;
+  font-size: 0.78rem;
+}
+
+.field-status {
+  margin-top: 0.2rem;
+}
+
+.field-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.page-header {
+  display: grid;
+  gap: 1rem;
+}
+
+.page-header-content {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.page-header-content .section-title {
+  margin-bottom: 0.2rem;
+}
+
+.page-header-content .section-subtitle {
+  margin-bottom: 0;
+}
+
+.page-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.55rem;
+}
+
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.75rem;
+}
+
+.section-header-copy {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.section-header-copy h2 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.section-header-copy p {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.section-header-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.empty-state h2 {
+  font-size: 1.2rem;
+}
+
+@media (max-width: 980px) {
+  .section-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

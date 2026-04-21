@@ -1,166 +1,401 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { createPhoto } from '../services/photosService.js';
-import { listThemes } from '../services/themesService.js';
-import { listCategories } from '../services/categoriesService.js';
-import { ApiError } from '../lib/apiClient.js';
+import React, { useEffect, useState, useMemo } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { 
+  uploadImage, 
+  createSubmission, 
+  getContests, 
+  getCategories, 
+  getRegions 
+} from '../services/supabaseService';
+import { useAuth } from '../hooks/useAuth';
+import { supabase } from '../lib/supabase';
+import { 
+  Upload, 
+  CheckCircle, 
+  AlertCircle, 
+  Camera, 
+  ArrowLeft, 
+  Image as ImageIcon,
+  Tag,
+  MapPin,
+  Trophy,
+  RefreshCw
+} from 'lucide-react';
+
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
+const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+
+const s = {
+  container: {
+    minHeight: '100vh',
+    background: '#fafafa',
+    padding: '2rem',
+    display: 'flex',
+    justifyContent: 'center',
+    fontFamily: "'Inter', sans-serif",
+  },
+  card: {
+    width: '100%',
+    maxWidth: '64rem',
+    background: '#fff',
+    borderRadius: '2rem',
+    boxShadow: '0 20px 50px -12px rgba(0,0,0,0.05)',
+    display: 'flex',
+    overflow: 'hidden',
+  },
+  formSection: {
+    flex: 1,
+    padding: '3rem',
+    borderRight: '1px solid #f1f5f9',
+  },
+  previewSection: {
+    width: '35%',
+    padding: '3rem',
+    background: '#f8fafc',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '2rem',
+  },
+  header: {
+    marginBottom: '2.5rem',
+  },
+  title: {
+    fontSize: '2rem',
+    fontWeight: 800,
+    margin: 0,
+    letterSpacing: '-0.02em',
+  },
+  subtitle: {
+    color: '#64748b',
+    marginTop: '0.5rem',
+    fontSize: '0.875rem',
+  },
+  form: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '1.5rem',
+  },
+  inputGroup: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+  },
+  label: {
+    fontSize: '0.75rem',
+    fontWeight: 700,
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    color: '#94a3b8',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+  },
+  input: {
+    padding: '0.875rem 1rem',
+    borderRadius: '0.75rem',
+    border: '2px solid #e2e8f0',
+    fontSize: '0.875rem',
+    outline: 'none',
+    transition: 'border-color 0.2s',
+  },
+  select: {
+    padding: '0.875rem 1rem',
+    borderRadius: '0.75rem',
+    border: '2px solid #e2e8f0',
+    fontSize: '0.875rem',
+    background: '#fff',
+    outline: 'none',
+  },
+  dropzone: (hasFile, isDragging) => ({
+    border: `2px dashed ${isDragging ? '#2563eb' : (hasFile ? '#3b82f6' : '#cbd5e1')}`,
+    borderRadius: '1.25rem',
+    padding: hasFile ? '4px' : '2.5rem',
+    textAlign: 'center',
+    background: isDragging ? 'rgba(37,99,235,0.05)' : (hasFile ? 'rgba(59,130,246,0.02)' : '#fff'),
+    cursor: 'pointer',
+    transition: 'all 0.2s',
+    transform: isDragging ? 'scale(1.02)' : 'scale(1)',
+    position: 'relative',
+    minHeight: '180px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden'
+  }),
+  submitBtn: {
+    marginTop: '1rem',
+    padding: '1rem',
+    borderRadius: '1rem',
+    background: '#2563eb',
+    color: '#fff',
+    border: 'none',
+    fontWeight: 700,
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: '0.5rem',
+    boxShadow: '0 10px 20px -5px rgba(37,99,235,0.3)',
+  },
+};
 
 export function UploadPhoto() {
+  const { user } = useAuth();
   const navigate = useNavigate();
-  const [themes, setThemes] = useState([]);
-  const [categories, setCategories] = useState([]);
-  const [preview, setPreview] = useState('/assets/photos/imagen1.jpg');
-  const [status, setStatus] = useState('idle');
-  const [error, setError] = useState('');
-  const [form, setForm] = useState({
+
+  const [options, setOptions] = useState({ contests: [], categories: [], regions: [] });
+  const [formData, setFormData] = useState({
     title: '',
     description: '',
-    themeId: '',
+    contestId: '',
     categoryId: '',
-    imageFile: null,
+    regionId: '',
   });
+  const [file, setFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
 
+  // 1. Cargar opciones básicas
   useEffect(() => {
-    listThemes({ isActive: true, limit: 100 })
-      .then((response) => {
-        const activeThemes = response.data || [];
-        setThemes(activeThemes);
-        if (activeThemes.length > 0) {
-          setForm((prev) => ({ ...prev, themeId: String(activeThemes[0].id) }));
+    async function loadData() {
+      try {
+        const [c, cat, reg] = await Promise.all([
+          getContests(), getCategories(), getRegions()
+        ]);
+        setOptions({ contests: c, categories: cat, regions: reg });
+        if (c.length > 0) {
+          setFormData(prev => ({ ...prev, contestId: String(c[0].id) }));
         }
-      })
-      .catch(() => setThemes([]));
-
-    listCategories()
-      .then((response) => setCategories(response.data || []))
-      .catch(() => setCategories([]));
+      } catch (err) {
+        console.error(err);
+        setError('Error al conectar con la base de datos.');
+      }
+    }
+    loadData();
   }, []);
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setStatus('loading');
-    setError('');
+  // 2. Cargar región desde perfil
+  useEffect(() => {
+    async function loadUserRegion() {
+      if (!user?.id) return;
+      
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('region_id')
+        .eq('id', user.id)
+        .single();
+        
+      if (!error && profile?.region_id) {
+        setFormData(prev => ({ ...prev, regionId: profile.region_id }));
+      }
+    }
+    loadUserRegion();
+  }, [user?.id]);
 
-    if (!form.imageFile) {
-      setStatus('error');
-      setError('Debes seleccionar una imagen');
+  const processFile = (selected) => {
+    if (!selected) return;
+
+    if (!ACCEPTED_TYPES.includes(selected.type)) {
+      setError('Formato no válido. Usa JPG, PNG o WebP.');
+      setFile(null);
+      setPreviewUrl('');
+      return;
+    }
+    if (selected.size > MAX_FILE_SIZE_BYTES) {
+      setError('La imagen es demasiado pesada (máx 5MB).');
+      setFile(null);
+      setPreviewUrl('');
       return;
     }
 
-    try {
-      await createPhoto({
-        title: form.title,
-        description: form.description,
-        themeId: form.themeId,
-        categoryId: form.categoryId || undefined,
-        imageFile: form.imageFile,
-      });
+    setFile(selected);
+    if (previewUrl) URL.revokeObjectURL(previewUrl);
+    const url = URL.createObjectURL(selected);
+    setPreviewUrl(url);
+    setError('');
+  };
 
-      navigate('/app/photos/upload/success');
-    } catch (requestError) {
-      setStatus('error');
-      if (requestError instanceof ApiError) {
-        setError(requestError.message);
-      } else {
-        setError('No se pudo subir la foto');
-      }
+  const handleFileChange = (e) => processFile(e.target.files[0]);
+
+  const handleDrag = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') setIsDragging(true);
+    else if (e.type === 'dragleave') setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) return setError('Es obligatorio subir una fotografía.');
+    if (!formData.title) return setError('Escribe un título para tu obra.');
+    if (!formData.contestId) return setError('Selecciona el concurso en el que participas.');
+
+    setLoading(true);
+    setError('');
+
+    try {
+      const publicUrl = await uploadImage(file, user?.id || 'guest');
+      await createSubmission({
+        userId: user.id,
+        contestId: formData.contestId,
+        categoryId: formData.categoryId || null,
+        regionId: formData.regionId || null,
+        imageUrl: publicUrl,
+        title: formData.title,
+        description: formData.description
+      });
+      navigate('/app/dashboard');
+    } catch (err) {
+      setError(err.message || 'Fallo inesperado al publicar la obra.');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="split">
-      <div className="card">
-        <h2 className="section-title">Subir foto</h2>
-        <p className="section-subtitle">Completa la ficha para abrir votacion.</p>
-        <form className="form" onSubmit={handleSubmit}>
-          <div className="field">
-            <label htmlFor="title">Titulo</label>
-            <input
-              id="title"
-              type="text"
-              placeholder="Atardecer urbano"
-              value={form.title}
-              onChange={(event) => setForm((prev) => ({ ...prev, title: event.target.value }))}
-              required
-              maxLength={150}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="description">Descripcion</label>
-            <textarea
-              id="description"
-              rows="4"
-              placeholder="Describe la historia de la foto..."
-              value={form.description}
-              onChange={(event) => setForm((prev) => ({ ...prev, description: event.target.value }))}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="theme">Tema semanal</label>
-            <select
-              id="theme"
-              value={form.themeId}
-              onChange={(event) => setForm((prev) => ({ ...prev, themeId: event.target.value }))}
-              required
-            >
-              <option value="">Selecciona un tema</option>
-              {themes.map((theme) => (
-                <option key={theme.id} value={theme.id}>
-                  {theme.title}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="category">Categoria</label>
-            <select
-              id="category"
-              value={form.categoryId}
-              onChange={(event) => setForm((prev) => ({ ...prev, categoryId: event.target.value }))}
-            >
-              <option value="">Sin categoria</option>
-              {categories.map((category) => (
-                <option key={category.id} value={category.id}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="file">Archivo</label>
-            <input
-              id="file"
-              type="file"
-              accept="image/png,image/jpeg,image/jpg"
-              onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (!file) {
-                  return;
-                }
-
-                setForm((prev) => ({ ...prev, imageFile: file }));
-                setPreview(URL.createObjectURL(file));
-              }}
-              required
-            />
-          </div>
-          {status === 'error' && <div className="status error">{error}</div>}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button className="btn" type="submit" disabled={status === 'loading'}>
-              {status === 'loading' ? 'Subiendo...' : 'Subir'}
-            </button>
-            <Link className="btn outline" to="/app/dashboard">
-              Cancelar
+    <div style={s.container}>
+      <style>{`
+        .upload-input:focus { border-color: #3b82f6 !important; }
+        .upload-submit:hover { background: #1d4ed8 !important; transform: translateY(-2px); }
+        .upload-submit:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .back-link:hover { color: #2563eb !important; }
+        .dropzone-overlay { opacity: 0; transition: opacity 0.2s; }
+        .dropzone-container:hover .dropzone-overlay { opacity: 1; }
+      `}</style>
+      
+      <div style={s.card}>
+        {/* Formulario Izquierda */}
+        <div style={s.formSection}>
+          <header style={s.header}>
+            <Link to="/app/dashboard" className="back-link" style={{ 
+              display: 'flex', alignItems: 'center', gap: '0.5rem', 
+              color: '#64748b', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem' 
+            }}>
+              <ArrowLeft size={16} /> Volver al panel
             </Link>
+            <h1 style={s.title}>Publicar Obra</h1>
+            <p style={s.subtitle}>Configura los detalles de tu participación.</p>
+          </header>
+
+          <form onSubmit={handleSubmit} style={s.form}>
+            {/* Título y Descripción */}
+            <div style={s.inputGroup}>
+              <label style={s.label}>Título de la obra</label>
+              <input 
+                type="text" 
+                className="upload-input"
+                style={s.input} 
+                placeholder="Ej. Luces de mi ciudad"
+                value={formData.title}
+                onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
+                required
+              />
+            </div>
+
+            <div style={s.inputGroup}>
+              <label style={s.label}>Descripción</label>
+              <textarea 
+                className="upload-input"
+                style={{ ...s.input, minHeight: '80px', resize: 'vertical' }} 
+                placeholder="¿Qué te inspiró a tomar esta foto?"
+                value={formData.description}
+                onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+              />
+            </div>
+
+            {/* Selectores */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div style={s.inputGroup}>
+                <label style={s.label}><Trophy size={14} /> Concurso</label>
+                <select style={s.select} value={formData.contestId} onChange={e => setFormData(p => ({ ...p, contestId: e.target.value }))} required>
+                  <option value="">Selecciona concurso</option>
+                  {options.contests.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
+                </select>
+              </div>
+              <div style={s.inputGroup}>
+                <label style={s.label}><Tag size={14} /> Categoría</label>
+                <select style={s.select} value={formData.categoryId} onChange={e => setFormData(p => ({ ...p, categoryId: e.target.value }))}>
+                  <option value="">Sin categoría</option>
+                  {options.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                </select>
+              </div>
+            </div>
+
+            {/* Dropzone con Vista Previa Integrada */}
+            <div 
+              className="dropzone-container"
+              style={s.dropzone(!!file, isDragging)} 
+              onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}
+              onClick={() => document.getElementById('file-input').click()}
+            >
+              <input id="file-input" type="file" style={{ display: 'none' }} accept="image/*" onChange={handleFileChange} />
+              
+              {file ? (
+                <div style={{ position: 'relative', width: '100%', height: '100%', minHeight: '180px' }}>
+                  <img src={previewUrl} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '1rem' }} alt="Preview" />
+                  <div className="dropzone-overlay" style={{ 
+                    position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.4)', 
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', 
+                    color: '#fff', gap: '0.5rem', borderRadius: '1rem', backdropFilter: 'blur(2px)'
+                  }}>
+                    <RefreshCw size={32} />
+                    <p style={{ fontWeight: 700 }}>Hacer clic para cambiar imagen</p>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ color: '#94a3b8' }}>
+                  <Upload size={32} style={{ marginBottom: '0.5rem' }} />
+                  <p style={{ fontWeight: 600 }}>{isDragging ? 'Suelta aquí' : 'Haz clic o arrastra una imagen'}</p>
+                </div>
+              )}
+            </div>
+
+            {error && (
+              <div style={{ padding: '0.875rem', background: '#fef2f2', border: '1px solid #fecaca', color: '#b91c1c', borderRadius: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.875rem' }}>
+                <AlertCircle size={18} /> {error}
+              </div>
+            )}
+
+            <button type="submit" className="upload-submit" disabled={loading} style={s.submitBtn}>
+              {loading ? 'Subiendo...' : 'Publicar Fotografía'}
+            </button>
+          </form>
+        </div>
+
+        {/* Resumen Derecha */}
+        <div style={s.previewSection}>
+          <h2 style={{ ...s.label, color: '#64748b' }}>Ficha de Publicación</h2>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#fff', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid #e2e8f0' }}>
+            <div>
+              <label style={s.label}>Título</label>
+              <p style={{ fontWeight: 800, color: '#0f172a', margin: '0.25rem 0', fontSize: '1.125rem' }}>{formData.title || '-'}</p>
+            </div>
+            <div>
+              <label style={s.label}>Concurso</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                <Trophy size={14} color="#f59e0b" />
+                {options.contests.find(c => String(c.id) === String(formData.contestId))?.title || 'Pendiente'}
+              </div>
+            </div>
+            <div>
+              <label style={s.label}>Región</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155', fontSize: '0.875rem', marginTop: '0.25rem' }}>
+                <MapPin size={14} color="#3b82f6" />
+                {options.regions.find(r => String(r.id) === String(formData.regionId))?.name || 'Localizando...'}
+              </div>
+            </div>
           </div>
-        </form>
-      </div>
-      <div className="card">
-        <h3 className="card-title">Vista previa</h3>
-        <img className="hero-image" src={preview} alt="Vista previa" />
-        <p className="helper" style={{ marginTop: 12 }}>
-          Formatos admitidos: JPG, PNG. Max 5MB.
-        </p>
+        </div>
       </div>
     </div>
   );

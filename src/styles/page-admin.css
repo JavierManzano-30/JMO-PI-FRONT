@@ -1,0 +1,22 @@
+.admin-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.admin-overview-card,
+.admin-email-card {
+  display: grid;
+  gap: 0.8rem;
+}
+
+.admin-overview-list {
+  margin-top: 0.2rem;
+}
+
+.admin-email-card header .section-subtitle {
+  margin-bottom: 0;
+}
+
+.admin-email-form {
+  max-width: 760px;
+}

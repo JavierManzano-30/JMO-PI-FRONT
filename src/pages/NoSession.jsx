@@ -1,16 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { StateScreen } from '../components/public/StateScreen.jsx';
 
 export function NoSession() {
   return (
-    <div className="auth-layout">
-      <div className="card auth-card">
-        <h2 className="card-title">Sesion expirada</h2>
-        <p className="card-subtle">Necesitas iniciar sesion para volver al dashboard.</p>
-        <Link className="btn" to="/login">
-          Ir a login
-        </Link>
-      </div>
-    </div>
+    <StateScreen
+      code="Sesión expirada"
+      title="Tu sesión ha caducado"
+      description="Por seguridad cerramos el acceso tras un periodo de inactividad. Inicia sesión de nuevo para continuar."
+      primaryAction={{ to: '/login', label: 'Iniciar sesión' }}
+      secondaryAction={{ to: '/winners', label: 'Ver ganadores' }}
+    />
   );
 }

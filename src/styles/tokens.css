@@ -1,0 +1,23 @@
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
+:root {
+  --bg-page: #f3f6fb;
+  --bg-soft: #ebf0f8;
+  --surface: #ffffff;
+  --surface-soft: #f7f9fc;
+  --text: #10213a;
+  --muted: #5a6981;
+  --border: #d9e1ee;
+  --primary: #245db5;
+  --primary-hover: #1f4f98;
+  --primary-soft: #e8effd;
+  --success: #1f7a4a;
+  --error: #b42318;
+  --warning: #9a6a00;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 18px;
+  --shadow-soft: 0 16px 40px -30px rgba(19, 38, 70, 0.5);
+  --shadow-panel: 0 30px 60px -42px rgba(19, 38, 70, 0.58);
+  --container: 1180px;
+}

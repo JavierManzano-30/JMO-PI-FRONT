@@ -1,98 +1,123 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import * as authService from '../services/authService.js';
-import * as usersService from '../services/usersService.js';
-import { ApiError } from '../lib/apiClient.js';
-import { clearStoredSession, getStoredSession, persistSession } from '../lib/session.js';
-
-const AuthContext = createContext(null);
+import React, { useEffect, useMemo, useState } from 'react';
+import { supabase } from '../lib/supabase';
+import { AuthContext } from '../context/AuthContext';
 
 export function AuthProvider({ children }) {
-  const [token, setToken] = useState(() => getStoredSession()?.token || null);
-  const [user, setUser] = useState(() => getStoredSession()?.user || null);
+  const [session, setSession] = useState(null);
+  const [user, setUser] = useState(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
 
-  useEffect(() => {
-    if (!token) {
-      setIsBootstrapping(false);
+  // 1. Función para hidratar el usuario con su perfil de la DB
+  const hydrateUser = async (authUser) => {
+    console.log("🛠️ Hidratando usuario...");
+    if (!authUser) {
+      setUser(null);
       return;
     }
 
-    usersService
-      .getMe()
-      .then((me) => {
-        setUser(me);
-        persistSession({ token, user: me });
-      })
-      .catch(() => {
-        setToken(null);
+    try {
+      console.log("🔍 Buscando perfil...");
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single();
+
+      if (profile && !error) {
+        console.log("✅ Perfil recuperado");
+        setUser({
+          ...authUser,
+          ...profile,
+          displayName: profile.full_name,
+          avatarUrl: profile.avatar_url
+        });
+      } else {
+        console.log("ℹ️ Usando auth básica (sin perfil en DB)");
+        setUser(authUser);
+      }
+    } catch (err) {
+      console.error("❌ Fallo en hidratación:", err);
+      setUser(authUser);
+    }
+  };
+
+  useEffect(() => {
+    // 2. Escuchar cambios de estado
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
+
+      console.log(`🔔 Evento Auth: ${event}`);
+      setSession(currentSession);
+      
+      if (currentSession?.user) {
+        setIsBootstrapping(false);
+        hydrateUser(currentSession.user); // Lanzamos en paralelo
+      } else {
         setUser(null);
-        clearStoredSession();
-      })
-      .finally(() => setIsBootstrapping(false));
-  }, [token]);
-
-  const setSession = (nextToken, nextUser) => {
-    setToken(nextToken);
-    setUser(nextUser);
-    persistSession({ token: nextToken, user: nextUser });
-  };
-
-  const login = async ({ email, password }) => {
-    const session = await authService.login({ email, password });
-    setSession(session.token, session.user);
-    return session;
-  };
-
-  const register = async ({ username, email, password, communityId }) => {
-    const session = await authService.register({
-      username,
-      email,
-      password,
-      community_id: communityId ? Number(communityId) : undefined,
+        setIsBootstrapping(false);
+      }
     });
 
-    setSession(session.token, session.user);
-    return session;
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const login = async ({ email, password }) => {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+    if (error) throw error;
+    
+    if (data.session) {
+      setSession(data.session);
+      // ¡CLAVE! Lanzamos la hidratación pero NO la esperamos
+      hydrateUser(data.session.user);
+    }
+    
+    return data;
   };
 
-  const refreshMe = async () => {
-    if (!token) {
-      return null;
-    }
-
-    try {
-      const me = await usersService.getMe();
-      setUser(me);
-      persistSession({ token, user: me });
-      return me;
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        clearStoredSession();
-        setToken(null);
-        setUser(null);
+  const register = async ({ username, email, password, regionId }) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          username,
+          full_name: email,
+          region_id: regionId
+        }
       }
-      throw error;
-    }
+    });
+
+    if (error) throw error;
+    return data;
+  };
+
+  const logout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  // Mantenemos estas funciones como placeholders para compatibilidad si se usan en otros sitios
+  const refreshMe = async () => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    setUser(currentUser);
+    return currentUser;
   };
 
   const updateProfile = async (payload) => {
-    const updated = await usersService.updateMe(payload);
-    setUser(updated);
-    persistSession({ token, user: updated });
-    return updated;
-  };
-
-  const logout = () => {
-    setToken(null);
-    setUser(null);
-    clearStoredSession();
+    const { data, error } = await supabase.auth.updateUser({
+      data: payload
+    });
+    if (error) throw error;
+    setUser(data.user);
+    return data.user;
   };
 
   const value = useMemo(
     () => ({
-      token,
+      session,
       user,
-      isAuthenticated: Boolean(token && user),
+      isAuthenticated: Boolean(session), // Permitimos entrar si hay sesión, aunque el perfil esté cargando
       isBootstrapping,
       login,
       register,
@@ -100,16 +125,8 @@ export function AuthProvider({ children }) {
       updateProfile,
       logout,
     }),
-    [token, user, isBootstrapping]
+    [session, user, isBootstrapping]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
-  }
-  return context;
 }

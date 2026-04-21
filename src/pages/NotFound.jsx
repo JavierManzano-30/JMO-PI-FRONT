@@ -1,16 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { StateScreen } from '../components/public/StateScreen.jsx';
 
 export function NotFound() {
   return (
-    <div className="auth-layout">
-      <div className="card auth-card">
-        <h2 className="card-title">404 · Pagina no encontrada</h2>
-        <p className="card-subtle">La ruta solicitada no existe o fue movida.</p>
-        <Link className="btn outline" to="/login">
-          Ir al inicio
-        </Link>
-      </div>
-    </div>
+    <StateScreen
+      code="404"
+      title="Página no encontrada"
+      description="La ruta que intentas abrir no está disponible o ha cambiado dentro de SnapNation."
+      primaryAction={{ to: '/winners', label: 'Ir a ganadores' }}
+      secondaryAction={{ to: '/login', label: 'Ir a acceso' }}
+    />
   );
 }

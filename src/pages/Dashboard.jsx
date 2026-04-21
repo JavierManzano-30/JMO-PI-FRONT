@@ -1,210 +1,292 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
-import { StatusBlock } from '../components/StatusBlock.jsx';
-import { listPhotos } from '../services/photosService.js';
-import { listThemes } from '../services/themesService.js';
-import { listCategories } from '../services/categoriesService.js';
-import { listCommunities } from '../services/communitiesService.js';
-import { createVote } from '../services/votesService.js';
-import { ApiError } from '../lib/apiClient.js';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { 
+  getContests, 
+  getCategories, 
+  getSubmissions 
+} from '../services/supabaseService';
+import { 
+  Heart,
+  ArrowUp,
+  MessageSquare,
+  Search,
+  Plus,
+  Compass,
+  MessageCircle
+} from 'lucide-react';
 
-const PAGE_SIZE = 9;
+const tokens = {
+  colors: {
+    bg: '#f3f4f6',
+    white: '#ffffff',
+    text: '#111827',
+    textMuted: '#6b7280',
+    accent: '#2563eb',
+    accentHover: '#1d4ed8',
+    border: '#e5e7eb',
+  },
+  shadows: {
+    sm: '0 4px 20px rgba(0,0,0,0.05)',
+    lg: '0 12px 30px rgba(0,0,0,0.1)',
+  }
+};
+
+const s = {
+  page: {
+    minHeight: '100vh',
+    background: tokens.colors.bg,
+    fontFamily: "'Inter', sans-serif",
+    color: tokens.colors.text,
+  },
+  nav: {
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
+    background: 'rgba(255,255,255,0.9)',
+    backdropFilter: 'blur(12px)',
+    borderBottom: `1px solid ${tokens.colors.border}`,
+    padding: '1rem 2rem',
+  },
+  navContent: {
+    maxWidth: '1280px',
+    margin: '0 auto',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  logo: {
+    fontSize: '1.5rem',
+    fontWeight: 900,
+    background: 'linear-gradient(to right, #2563eb, #4f46e5)',
+    WebkitBackgroundClip: 'text',
+    WebkitTextFillColor: 'transparent',
+    letterSpacing: '-0.05em',
+    textDecoration: 'none',
+  },
+  gallery: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gridAutoRows: '480px',
+    gridAutoFlow: 'dense',
+    gap: '1.5rem',
+    padding: '2rem',
+    maxWidth: '1280px',
+    margin: '0 auto',
+  },
+  postCard: {
+    background: tokens.colors.white,
+    borderRadius: '24px',
+    overflow: 'hidden',
+    display: 'flex',
+    flexDirection: 'column',
+    boxShadow: tokens.shadows.sm,
+    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+    textDecoration: 'none',
+    color: 'inherit',
+  },
+  imageWrapper: {
+    flex: 1,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  image: {
+    width: '100%',
+    height: '100%',
+    objectFit: 'cover',
+    transition: 'transform 0.6s ease',
+  },
+  footer: {
+    padding: '1.25rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    background: tokens.colors.white,
+    borderTop: `1px solid #f9fafb`,
+  },
+  author: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.75rem',
+    overflow: 'hidden',
+  },
+  avatar: {
+    width: '40px',
+    height: '40px',
+    borderRadius: '50%',
+    objectFit: 'cover',
+    border: '2px solid #eff6ff',
+    flexShrink: 0,
+    background: tokens.colors.accent,
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '0.9rem',
+    fontWeight: 800,
+  },
+  actionBtn: {
+    width: '38px',
+    height: '38px',
+    borderRadius: '50%',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'transparent',
+    border: 'none',
+    color: tokens.colors.textMuted,
+    cursor: 'pointer',
+    transition: 'all 0.2s ease',
+  },
+  floatAction: {
+    position: 'fixed',
+    bottom: '2.5rem',
+    right: '2.5rem',
+    width: '4rem',
+    height: '4rem',
+    borderRadius: '50%',
+    background: '#000',
+    color: '#fff',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+    zIndex: 200,
+  }
+};
 
 export function Dashboard() {
+  const { user } = useAuth();
   const [params, setParams] = useSearchParams();
-  const [status, setStatus] = useState('loading');
-  const [error, setError] = useState('');
-  const [photos, setPhotos] = useState([]);
-  const [meta, setMeta] = useState({ page: 1, total_pages: 0 });
-  const [weeklyTheme, setWeeklyTheme] = useState(null);
-  const [categories, setCategories] = useState([]);
-  const [communities, setCommunities] = useState([]);
-  const [votingPhotoId, setVotingPhotoId] = useState(null);
+  const navigate = useNavigate();
+  const [submissions, setSubmissions] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const filters = useMemo(
-    () => ({
-      page: Number(params.get('page') || '1'),
-      communityId: params.get('community_id') || '',
-      categoryId: params.get('category_id') || '',
-      sort: params.get('sort') || 'created_at:desc',
-    }),
-    [params]
-  );
-
-  useEffect(() => {
-    listCategories()
-      .then((response) => setCategories(response.data || []))
-      .catch(() => setCategories([]));
-
-    listCommunities({ limit: 100 })
-      .then((response) => setCommunities(response.data || []))
-      .catch(() => setCommunities([]));
-
-    listThemes({ isActive: true, limit: 1 })
-      .then((response) => setWeeklyTheme(response.data?.[0] || null))
-      .catch(() => setWeeklyTheme(null));
-  }, []);
-
-  const loadPhotos = () => {
-    setStatus('loading');
-    setError('');
-
-    listPhotos({
-      page: filters.page,
-      limit: PAGE_SIZE,
-      communityId: filters.communityId || undefined,
-      categoryId: filters.categoryId || undefined,
-      sort: filters.sort,
-    })
-      .then((response) => {
-        setPhotos(response.data || []);
-        setMeta(response.meta || { page: 1, total_pages: 0 });
-        setStatus(response.data?.length ? 'default' : 'empty');
-      })
-      .catch((requestError) => {
-        setStatus('error');
-        if (requestError instanceof ApiError) {
-          setError(requestError.message);
-        } else {
-          setError('No se pudo cargar la galeria');
-        }
-      });
+  const activeFilters = {
+    contestId: params.get('contest') || '',
+    categoryId: params.get('category') || '',
   };
 
-  useEffect(() => {
-    loadPhotos();
-  }, [filters.page, filters.communityId, filters.categoryId, filters.sort]);
-
-  const handleFilterChange = (key, value) => {
-    const next = new URLSearchParams(params);
-
-    if (!value) {
-      next.delete(key);
-    } else {
-      next.set(key, value);
+  const loadSubmissions = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await getSubmissions(activeFilters, user?.id);
+      setSubmissions(data || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
     }
+  }, [params, user?.id]);
 
-    next.set('page', '1');
-    setParams(next);
-  };
+  useEffect(() => {
+    loadSubmissions();
+  }, [loadSubmissions]);
 
-  const handleVote = async (photoId) => {
-    setVotingPhotoId(photoId);
-    setError('');
+  const handleToggleVote = async (e, photoId, hasVoted) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!user) return navigate('/login');
 
     try {
-      await createVote(photoId);
-      loadPhotos();
-    } catch (requestError) {
-      if (requestError instanceof ApiError) {
-        setError(requestError.message);
+      if (hasVoted) {
+        await supabase.from('votes').delete().eq('submission_id', photoId).eq('user_id', user.id);
       } else {
-        setError('No se pudo registrar el voto');
+        await supabase.from('votes').insert([{ submission_id: photoId, user_id: user.id }]);
       }
-    } finally {
-      setVotingPhotoId(null);
+      
+      setSubmissions(prev => prev.map(s => {
+        if (s.id === photoId) {
+          return {
+            ...s,
+            hasVoted: !hasVoted,
+            voteCount: hasVoted ? s.voteCount - 1 : s.voteCount + 1
+          };
+        }
+        return s;
+      }));
+    } catch (err) {
+      console.error(err);
     }
   };
 
+  const getAuthorName = (item) => {
+    if (!item?.profiles) return 'Participante';
+    return item.profiles.username || item.profiles.full_name || 'Participante';
+  };
+
+  // Determinar si una tarjeta debe ser ancha (landscape)
+  const isHorizontal = (index) => index % 5 === 0; 
+
   return (
-    <div className="dashboard">
-      <div className="filters">
-        <div className="filters-left">
-          <select
-            aria-label="Comunidad"
-            value={filters.communityId}
-            onChange={(event) => handleFilterChange('community_id', event.target.value)}
-          >
-            <option value="">Comunidad</option>
-            {communities.map((community) => (
-              <option key={community.id} value={community.id}>
-                {community.name}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Categoria"
-            value={filters.categoryId}
-            onChange={(event) => handleFilterChange('category_id', event.target.value)}
-          >
-            <option value="">Categoria</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-          <select
-            aria-label="Ordenar"
-            value={filters.sort}
-            onChange={(event) => handleFilterChange('sort', event.target.value)}
-          >
-            <option value="created_at:desc">Mas recientes</option>
-            <option value="votes:desc">Mas votadas</option>
-            <option value="votes:asc">Menos votadas</option>
-          </select>
-        </div>
-        <div className="filters-center pagination">
-          {filters.page <= 1 ? (
-            <span className="pagination-arrow disabled">&lt;</span>
-          ) : (
-            <Link className="pagination-arrow" to={`?${new URLSearchParams({ ...Object.fromEntries(params), page: String(filters.page - 1) })}`}>
-              &lt;
-            </Link>
-          )}
-          <span className="page-link active">{meta.page || filters.page}</span>
-          {meta.total_pages > (meta.page || filters.page) && (
-            <Link
-              className="pagination-arrow"
-              to={`?${new URLSearchParams({ ...Object.fromEntries(params), page: String((meta.page || filters.page) + 1) })}`}
+    <div style={s.page}>
+      <style>{`
+        .action-icon:hover { background: #f1f5f9; color: #111827; }
+        .heart-btn:hover { background: #fee2e2 !important; color: #ef4444 !important; }
+        .comment-btn:hover { background: #dcfce7 !important; color: #059669 !important; }
+        .vote-active { color: ${tokens.colors.accent} !important; background: #dbeafe !important; }
+        .heart-active { color: #ef4444 !important; background: #fee2e2 !important; }
+      `}</style>
+
+      <main style={s.gallery}>
+        {loading ? (
+          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '10rem', color: tokens.colors.textMuted, fontWeight: 600 }}>Cargando Feed...</div>
+        ) : submissions.length === 0 ? (
+          <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '10rem' }}>
+            <p style={{ color: tokens.colors.textMuted }}>No hay publicaciones todavía.</p>
+          </div>
+        ) : (
+          submissions.map((item, index) => (
+            <Link 
+              to={`/app/photos/${item.id}`} 
+              key={item.id} 
+              style={{ ...s.postCard, gridColumn: isHorizontal(index) ? 'span 2' : 'span 1' }} 
+              className="vibe-card"
             >
-              &gt;
-            </Link>
-          )}
-        </div>
-        <div className="filters-right">
-          <strong>Tema semanal:</strong> {weeklyTheme?.title || 'Sin tema activo'}
-        </div>
-      </div>
-      <StatusBlock state={status} />
-      {error && <div className="status error">{error}</div>}
-      {status === 'empty' && (
-        <Link className="btn outline" to="/app/photos/upload" style={{ marginTop: 16 }}>
-          Subir primera foto
-        </Link>
-      )}
-      {status === 'default' && (
-        <section className="gallery-card">
-          <h3 className="gallery-title">GALERIA DE FOTOS</h3>
-          <div className="gallery-cards">
-            {photos.map((photo) => (
-              <article className="photo-card" key={photo.id}>
-                <Link className="photo-link" to={`/app/photos/${photo.id}`}>
-                  <img src={photo.image} alt={photo.categoryName || photo.title} />
-                </Link>
-                <div className="photo-info">
-                  <div className="photo-meta">
-                    <div>{photo.displayName}</div>
-                    <div>{photo.communityName || 'Sin comunidad'}</div>
-                    <div>{photo.categoryName || 'Sin categoria'}</div>
-                  </div>
-                  <div className="photo-actions">
-                    <div className="votes">❤ {photo.votes} votos</div>
-                    <button
-                      className="btn"
-                      type="button"
-                      onClick={() => handleVote(photo.rawId)}
-                      disabled={votingPhotoId === photo.rawId}
-                    >
-                      {votingPhotoId === photo.rawId ? 'Votando...' : 'Votar'}
-                    </button>
+              <div style={s.imageWrapper}>
+                <img src={item.image_url} style={s.image} alt={item.title} />
+              </div>
+
+              <div style={s.footer}>
+                <div style={s.author}>
+                  {item.profiles?.avatar_url ? (
+                    <img src={item.profiles.avatar_url} style={s.avatar} alt="avatar" />
+                  ) : (
+                    <div style={s.avatar}>{getAuthorName(item).charAt(0).toUpperCase()}</div>
+                  )}
+                  <div style={{ overflow: 'hidden' }}>
+                    <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      @{getAuthorName(item)}
+                    </p>
+                    <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {item.title}
+                    </p>
                   </div>
                 </div>
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button style={s.actionBtn} className="action-icon comment-btn">
+                    <MessageSquare size={20} />
+                  </button>
+                  <button 
+                    onClick={(e) => handleToggleVote(e, item.id, item.hasVoted)}
+                    style={s.actionBtn} 
+                    className={`action-icon heart-btn ${item.hasVoted ? 'heart-active' : ''}`}
+                    title="Me gusta"
+                  >
+                    <Heart size={20} fill={item.hasVoted ? 'currentColor' : 'none'} />
+                  </button>
+                </div>
+              </div>
+            </Link>
+          ))
+        )}
+      </main>
+
+      <Link to="/app/photos/upload" style={s.floatAction}>
+        <Plus size={32} />
+      </Link>
     </div>
   );
 }
