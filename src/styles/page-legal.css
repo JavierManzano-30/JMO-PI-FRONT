@@ -1,0 +1,142 @@
+.legal-page {
+  min-height: 100vh;
+  background: var(--bg-page, #f3f6fb);
+  margin-top: -1.6rem; /* Neutralize .page top margin */
+}
+
+.legal-hero {
+  padding: 6rem 2rem 5rem;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  color: #fff;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0 0 3rem 3rem;
+  box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.25);
+  margin-bottom: 2rem;
+}
+
+.legal-hero::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  right: -10%;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.1) 0%, transparent 70%);
+  filter: blur(60px);
+}
+
+.legal-hero.privacy::before {
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.1) 0%, transparent 70%);
+}
+
+.legal-hero.cookies::before {
+  background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, transparent 70%);
+}
+
+.legal-hero-content {
+  max-width: 800px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.legal-hero h1 {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  color: #fff;
+  margin: 1rem 0;
+  line-height: 1.1;
+}
+
+.legal-hero p {
+  color: var(--text-muted, #94a3b8);
+  font-size: 1.25rem;
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.legal-section {
+  padding: 0 2rem 4rem;
+  max-width: 900px;
+  margin: -2rem auto 0;
+  position: relative;
+  z-index: 10;
+}
+
+.legal-card-glass {
+  background: #ffffff;
+  border: 1px solid var(--border, #d9e1ee);
+  border-radius: 24px;
+  padding: 3rem;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+}
+
+.legal-block {
+  margin-bottom: 3rem;
+}
+
+.legal-block:last-child {
+  margin-bottom: 0;
+}
+
+.legal-icon-wrap {
+  width: 48px;
+  height: 48px;
+  background: #f0f7ff;
+  color: #2563eb;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.privacy .legal-icon-wrap {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.cookies .legal-icon-wrap {
+  background: #fffbeb;
+  color: #d97706;
+}
+
+.legal-block h2 {
+  color: #1e293b;
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+}
+
+.legal-block p {
+  color: #475569;
+  line-height: 1.7;
+  margin-bottom: 1rem;
+}
+
+.legal-block ul {
+  list-style: none;
+  padding: 0;
+}
+
+.legal-block li {
+  color: #475569;
+  padding: 0.5rem 0;
+  padding-left: 1.5rem;
+  position: relative;
+}
+
+.legal-block li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: #38bdf8;
+}
+
+@media (max-width: 768px) {
+  .legal-card-glass {
+    padding: 2rem;
+  }
+}

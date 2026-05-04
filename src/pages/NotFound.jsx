@@ -7,7 +7,7 @@ export function NotFound() {
       code="404"
       title="Página no encontrada"
       description="La ruta que intentas abrir no está disponible o ha cambiado dentro de SnapNation."
-      primaryAction={{ to: '/winners', label: 'Ir a ganadores' }}
+      primaryAction={{ to: '/contests', label: 'Ir a concursos' }}
       secondaryAction={{ to: '/login', label: 'Ir a acceso' }}
     />
   );

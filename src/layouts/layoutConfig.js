@@ -3,8 +3,8 @@ function buildFooterSections({ isAuthenticated, isAdmin }) {
     {
       title: 'Explorar',
       links: [
-        { to: isAuthenticated ? '/app/dashboard' : '/winners', label: 'Galería' },
-        { to: isAuthenticated ? '/app/winners' : '/winners', label: 'Ganadores' },
+        { to: '/gallery', label: 'Galería' },
+        { to: isAuthenticated ? '/app/contests' : '/contests', label: 'Concursos' },
       ],
     },
     {
@@ -27,6 +27,14 @@ function buildFooterSections({ isAuthenticated, isAdmin }) {
         isAdmin ? 'Gestión administrativa disponible' : 'Seguimiento de ranking histórico',
       ],
     },
+    {
+      title: 'Legal',
+      links: [
+        { to: '/legal-notice', label: 'Aviso Legal' },
+        { to: '/privacy-policy', label: 'Política de Privacidad' },
+        { to: '/cookie-policy', label: 'Política de Cookies' },
+      ],
+    },
   ];
 
   if (isAdmin) {
@@ -41,9 +49,10 @@ function buildFooterSections({ isAuthenticated, isAdmin }) {
 
 export function createPublicLayoutConfig() {
   return {
-    homeTo: '/winners',
+    homeTo: '/gallery',
     navItems: [
-      { to: '/winners', label: 'Ganadores', end: true },
+      { to: '/gallery', label: 'Galería', end: true },
+      { to: '/contests', label: 'Concursos', end: true },
       { to: '/login', label: 'Acceso', end: true },
     ],
     authActions: [
@@ -59,7 +68,7 @@ export function createPrivateLayoutConfig({ user, onLogout }) {
 
   const navItems = [
     { to: '/app/dashboard', label: 'Galería' },
-    { to: '/app/winners', label: 'Ganadores' },
+    { to: '/app/contests', label: 'Concursos' },
     { to: '/app/photos/upload', label: 'Subir foto' },
     { to: '/app/profile', label: 'Perfil' },
   ];

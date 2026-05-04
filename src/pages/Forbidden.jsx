@@ -8,7 +8,7 @@ export function Forbidden() {
       title="Acceso denegado"
       description="No tienes permisos para acceder a esta sección. Si crees que es un error, contacta con administración."
       primaryAction={{ to: '/app/dashboard', label: 'Volver al panel' }}
-      secondaryAction={{ to: '/app/winners', label: 'Ver ranking' }}
+      secondaryAction={{ to: '/app/contests', label: 'Ver concursos' }}
     />
   );
 }

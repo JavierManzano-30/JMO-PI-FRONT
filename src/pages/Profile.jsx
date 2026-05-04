@@ -31,97 +31,58 @@ function formatVotesAverage(value) {
 
 export function Profile() {
   const { user } = useAuth();
-  const [profileData, setProfileData] = useState(null);
-  const [activity, setActivity] = useState({
-    status: 'loading',
-    uploaded: 0,
-    votesReceived: 0,
-    averageVotes: 0,
-    bestPhoto: null,
-    lastPublishedAt: null,
-  });
+  const [userPhotos, setUserPhotos] = useState([]);
+  const [loadingPhotos, setLoadingPhotos] = useState(false);
+  const profileData = useMemo(() => {
+    if (!user) return null;
 
-  // 1. Cargar datos del perfil de forma "robusta" (sin depender de Joins si fallan)
+    const metadata = user.user_metadata || {};
+    return {
+      username: metadata.username || user.username || user.email?.split('@')[0] || 'Usuario',
+      avatar_url: metadata.avatar_url || metadata.picture || user.avatar_url || '',
+      community_name: user.community_name || metadata.region_name || metadata.community_name || 'Sin comunidad asignada',
+      created_at: user.created_at || null,
+    };
+  }, [user]);
+
   useEffect(() => {
-    async function fetchFullProfile() {
-      if (!user?.id) return;
-      
+    async function loadUserPhotos() {
+      if (!Number.isInteger(user?.backendId) || user.backendId < 1) {
+        setUserPhotos([]);
+        return;
+      }
+
+      setLoadingPhotos(true);
       try {
-        // Primero intentamos la consulta básica del perfil
-        const { data: profile, error: pError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-          
-        if (pError) throw pError;
+        const { data, error } = await supabase
+          .from('photos')
+          .select('id, title, image_url, created_at')
+          .eq('user_id', user.backendId)
+          .eq('is_deleted', false)
+          .order('created_at', { ascending: false });
 
-        let regionInfo = null;
-        if (profile?.region_id) {
-          // Consultamos la región por separado para evitar errores 400 de Joins mal configurados
-          const { data: region } = await supabase
-            .from('regions')
-            .select('name')
-            .eq('id', profile.region_id)
-            .single();
-          regionInfo = region;
-        }
-
-        setProfileData({ ...profile, regions: regionInfo });
+        if (error) throw error;
+        setUserPhotos(data || []);
       } catch (err) {
-        console.error('Error cargando perfil robusto:', err);
+        console.error('Error cargando fotos del perfil:', err);
+        setUserPhotos([]);
+      } finally {
+        setLoadingPhotos(false);
       }
     }
-    fetchFullProfile();
-  }, [user?.id]);
 
-  // 2. Cargar actividad (evita error 500 del antiguo backend)
-  useEffect(() => {
-    if (!user?.id) {
-      setActivity(p => ({ ...p, status: 'empty' }));
-      return;
-    }
+    loadUserPhotos();
+  }, [user?.backendId]);
 
-    setActivity((prev) => ({ ...prev, status: 'loading' }));
-
-    supabase
-      .from('submissions')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false })
-      .then(({ data: items, error }) => {
-        if (error) throw error;
-        
-        const safeItems = items || [];
-        const votes = safeItems.reduce((total, photo) => total + (photo.votes || 0), 0);
-        const uploaded = safeItems.length;
-        const averageVotes = uploaded ? votes / uploaded : 0;
-
-        const bestPhoto = safeItems.reduce((currentBest, currentPhoto) => {
-          if (!currentBest) return currentPhoto;
-          if ((currentPhoto.votes || 0) > (currentBest.votes || 0)) return currentPhoto;
-          return currentBest;
-        }, null);
-
-        const lastPublishedAt = safeItems[0]?.created_at || null;
-
-        setActivity({
-          status: 'default',
-          uploaded,
-          votesReceived: votes,
-          averageVotes,
-          bestPhoto,
-          lastPublishedAt,
-        });
-      })
-      .catch((err) => {
-        console.error('Error cargando actividad:', err);
-        setActivity(p => ({ ...p, status: 'error' }));
-      });
-  }, [user?.id]);
+  const activity = useMemo(() => ({
+    uploaded: userPhotos.length,
+    votesReceived: 0,
+    averageVotes: 0,
+    lastPublishedAt: userPhotos[0]?.created_at || null,
+  }), [userPhotos]);
 
   const registeredAt = useMemo(() => formatDate(user?.created_at || profileData?.created_at), [user?.created_at, profileData?.created_at]);
-  const communityLabel = profileData?.regions?.name || 'Sin comunidad asignada';
+  const communityLabel = profileData?.community_name || 'Sin comunidad asignada';
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem', fontFamily: "'Inter', sans-serif" }}>
@@ -195,12 +156,67 @@ export function Profile() {
             <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '1.5rem' }}>Detalles de Cuenta</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Usuario</span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>@{profileData?.username || 'usuario'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Correo</span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', maxWidth: '55%', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email || 'Sin correo'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Rol</span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>{user?.role === 'admin' ? 'Administrador' : 'Miembro'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
+                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Comunidad</span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>{communityLabel}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
                 <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Registrado</span>
                 <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>{registeredAt}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Última publicación</span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>{formatDate(activity.lastPublishedAt)}</span>
               </div>
             </div>
           </section>
         </div>
+
+        <section style={{ background: '#fff', borderRadius: '2rem', padding: '2rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ImageIcon size={20} color="#3b82f6" /> Fotos Subidas
+          </h3>
+          {loadingPhotos ? (
+            <p style={{ color: '#64748b', margin: 0 }}>Cargando fotos...</p>
+          ) : userPhotos.length === 0 ? (
+            <p style={{ color: '#64748b', margin: 0 }}>Aún no has subido fotografías.</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem' }}>
+              {userPhotos.map((photo) => (
+                <Link
+                  key={photo.id}
+                  to={`/app/photos/${photo.id}`}
+                  style={{ textDecoration: 'none', color: 'inherit', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}
+                >
+                  <img
+                    src={photo.image_url}
+                    alt={photo.title || 'Fotografía'}
+                    style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }}
+                  />
+                  <div style={{ padding: '0.75rem' }}>
+                    <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {photo.title || 'Sin título'}
+                    </p>
+                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
+                      {formatDate(photo.created_at)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
     </div>
   );

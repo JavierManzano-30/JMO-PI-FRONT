@@ -191,22 +191,28 @@ export function ProfileEdit() {
         finalAvatarUrl = await uploadImage(avatarFile, user.id);
       }
 
-      // 1. Actualizamos la tabla de perfiles (Base de datos)
-      const { error: dbError } = await supabase
-        .from('profiles')
-        .update({
-          username: profileData.username.toLowerCase().replace(/\s/g, ''),
-          full_name: profileData.fullName,
-          avatar_url: finalAvatarUrl
-        })
-        .eq('id', user.id);
+      const sanitizedUsername = profileData.username.toLowerCase().replace(/\s/g, '');
+      const numericUserId = Number.isInteger(user?.backendId) && user.backendId > 0 ? user.backendId : null;
+      const canUpdateBackendUser = Number.isInteger(numericUserId) && numericUserId > 0;
 
-      if (dbError) throw dbError;
+      // 1. Si el usuario está enlazado con el backend (id numérica), actualizamos su registro.
+      if (canUpdateBackendUser) {
+        const { error: dbError } = await supabase
+          .from('users')
+          .update({
+            username: sanitizedUsername,
+            display_name: profileData.fullName,
+            avatar_url: finalAvatarUrl
+          })
+          .eq('id', numericUserId);
+
+        if (dbError) throw dbError;
+      }
 
       // 2. Actualizamos los metadatos de Auth (Sistema)
       const { error: authError } = await supabase.auth.updateUser({
         data: {
-          username: profileData.username.toLowerCase().replace(/\s/g, ''),
+          username: sanitizedUsername,
           full_name: profileData.fullName,
           avatar_url: finalAvatarUrl
         }

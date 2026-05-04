@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { getRegions } from '../services/supabaseService.js';
+import logoSrc from '../assets/logo-propio-transparente.png';
 
 /* ─────────────────────── estilos en línea ─────────────────────── */
 const s = {
@@ -23,17 +24,18 @@ const s = {
     color: dark ? '#fff' : '#000',
     fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
     height: '100vh',
-    overflow: 'hidden',
+    overflowY: 'auto',
   }),
   /* ── lado izquierdo ── */
   left: {
-    display: 'none',
     position: 'relative',
-    overflow: 'hidden',
-    padding: '3rem',
+    height: '100vh',
+    width: '50%',
+    display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    width: '50%',
+    padding: '3rem',
+    overflow: 'hidden',
   },
   bgImg: {
     position: 'absolute',
@@ -59,8 +61,8 @@ const s = {
     gap: '0.75rem',
   },
   logoBox: {
-    background: 'rgba(255,255,255,0.10)',
-    backdropFilter: 'blur(8px)',
+    background: 'rgba(255,255,255,0.15)',
+    backdropFilter: 'blur(12px)',
     padding: '0.5rem',
     borderRadius: '1rem',
     border: '1px solid rgba(255,255,255,0.20)',
@@ -115,7 +117,7 @@ const s = {
   },
   /* ── lado derecho ── */
   right: {
-    width: '100%',
+    width: '50%',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
@@ -129,8 +131,8 @@ const s = {
   },
   themeBtn: {
     position: 'absolute',
-    top: '2rem',
-    right: '2rem',
+    top: '2.5rem',
+    right: '2.5rem',
     width: '3rem',
     height: '3rem',
     display: 'flex',
@@ -147,9 +149,9 @@ const s = {
     maxWidth: '24rem',
     display: 'flex',
     flexDirection: 'column',
-    gap: '1.5rem',
-    paddingTop: '2rem',
-    paddingBottom: '2rem',
+    gap: '1rem',
+    paddingTop: '1rem',
+    paddingBottom: '0.5rem',
   },
   heading: {
     margin: 0,
@@ -167,13 +169,15 @@ const s = {
   inputWrap: {
     display: 'flex',
     flexDirection: 'column',
-    gap: '0.75rem',
+    gap: '0.5rem',
   },
   input: (dark) => ({
     width: '100%',
     padding: '0.875rem 1.25rem',
     borderRadius: '1rem',
-    border: `2px solid ${dark ? '#1e293b' : '#cbd5e1'}`,
+    borderWidth: '2px',
+    borderStyle: 'solid',
+    borderColor: dark ? '#1e293b' : '#cbd5e1',
     background: 'transparent',
     outline: 'none',
     fontSize: '0.875rem',
@@ -255,7 +259,7 @@ const s = {
     textTransform: 'uppercase',
     letterSpacing: '0.3em',
     opacity: 0.3,
-    marginTop: '1.5rem',
+    marginTop: '1rem',
   },
   legalLink: {
     textDecoration: 'none',
@@ -311,7 +315,7 @@ export function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (formData.password !== formData.confirmPassword) {
       setError('Las contraseñas no coinciden');
       setStatus('error');
@@ -326,15 +330,25 @@ export function Register() {
 
     setStatus('loading');
     setError('');
-    
+
     try {
-      await register({
+      const result = await register({
         username: formData.username,
         email: formData.email,
         password: formData.password,
         regionId: formData.regionId
       });
-      navigate('/app/dashboard');
+
+      if (result?.session) {
+        navigate('/app/dashboard');
+      } else {
+        navigate('/login', {
+          replace: true,
+          state: {
+            info: 'Cuenta creada. Revisa tu correo y confirma la cuenta para iniciar sesión.'
+          }
+        });
+      }
     } catch (err) {
       setError(err.message || 'No se pudo crear la cuenta. Inténtalo de nuevo.');
       setStatus('error');
@@ -357,7 +371,7 @@ export function Register() {
         }
         .register-input:focus { border-color: #3b82f6 !important; }
         .register-submit:hover { background: #1d4ed8 !important; }
-        .register-theme-btn:hover { opacity: 0.8; }
+        .register-theme-btn:hover { background: ${dark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.1)'} !important; }
         .register-footer-link:hover { text-decoration: underline !important; filter: brightness(1.2); }
       `}</style>
 
@@ -371,12 +385,7 @@ export function Register() {
         <div style={s.overlay(dark)} />
 
         <div style={s.logo}>
-          <div style={s.logoBox}>
-            <Camera color="#fff" size={24} />
-          </div>
-          <span style={s.logoText}>
-            Snap<span style={s.logoAccent}>Nation</span>
-          </span>
+          <img src={logoSrc} alt="SnapNation" height="140" style={{ display: 'block', objectFit: 'contain', filter: dark ? 'brightness(0) invert(1) drop-shadow(0px 2px 8px rgba(0,0,0,0.5))' : 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))', transition: 'filter 0.3s' }} />
         </div>
 
         <div style={s.leftBottom}>
@@ -396,140 +405,157 @@ export function Register() {
           onClick={() => setDark(!dark)}
           style={{
             ...s.themeBtn,
-            background: dark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-            color: dark ? '#facc15' : '#475569',
+            background: dark ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)',
+            color: dark ? '#fde047' : '#475569',
           }}
           aria-label="Cambiar tema"
         >
           {dark ? <Sun size={20} /> : <Moon size={20} />}
         </button>
 
-        <div style={s.panel}>
-          <header>
-            <h1 style={s.heading}>Crear cuenta</h1>
-            <p style={s.subheading(dark)}>
-              Únete a la nación fotográfica. Tu viaje comienza aquí.
-            </p>
-          </header>
+        <div style={{
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'flex-start',
+          width: '100%',
+          alignItems: 'center',
+          paddingTop: '3vh'
+        }}>
+          <div style={s.panel}>
+            <header>
+              <h1 style={s.heading}>Crear cuenta</h1>
+              <p style={s.subheading(dark)}>
+                Únete a la nación fotográfica. Tu viaje comienza aquí.
+              </p>
+            </header>
 
-          {status === 'error' && <p style={s.errorMsg} role="alert">{error}</p>}
+            {status === 'error' && <p style={s.errorMsg} role="alert">{error}</p>}
 
-          <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={s.inputWrap}>
-              <input
-                type="email"
-                name="email"
-                placeholder="Email"
-                autoComplete="username"
-                value={formData.email}
-                onChange={handleChange}
-                onFocus={() => setFocusedField('email')}
-                onBlur={() => setFocusedField(null)}
-                style={inputStyle('email')}
-                required
-              />
-              <input
-                type="text"
-                name="username"
-                placeholder="Nombre de usuario"
-                autoComplete="nickname"
-                value={formData.username}
-                onChange={handleChange}
-                onFocus={() => setFocusedField('username')}
-                onBlur={() => setFocusedField(null)}
-                style={inputStyle('username')}
-                required
-              />
-              <div style={{ position: 'relative' }}>
+            <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={s.inputWrap}>
                 <input
-                  type={showPwd ? 'text' : 'password'}
-                  name="password"
-                  placeholder="Contraseña"
-                  value={formData.password}
+                  type="email"
+                  name="email"
+                  placeholder="Email"
+                  autoComplete="username"
+                  value={formData.email}
                   onChange={handleChange}
-                  onFocus={() => setFocusedField('password')}
+                  onFocus={() => setFocusedField('email')}
                   onBlur={() => setFocusedField(null)}
-                  style={{ ...inputStyle('password'), paddingRight: '3.5rem' }}
+                  style={inputStyle('email')}
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPwd(!showPwd)}
-                  style={s.eyeBtn}
-                >
-                  {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-              <div style={{ position: 'relative' }}>
                 <input
-                  type={showConfirmPwd ? 'text' : 'password'}
-                  name="confirmPassword"
-                  placeholder="Confirmar contraseña"
-                  value={formData.confirmPassword}
+                  type="text"
+                  name="username"
+                  placeholder="Nombre de usuario"
+                  autoComplete="nickname"
+                  value={formData.username}
                   onChange={handleChange}
-                  onFocus={() => setFocusedField('confirmPassword')}
+                  onFocus={() => setFocusedField('username')}
                   onBlur={() => setFocusedField(null)}
-                  style={{ ...inputStyle('confirmPassword'), paddingRight: '3.5rem' }}
+                  style={inputStyle('username')}
                   required
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPwd(!showConfirmPwd)}
-                  style={s.eyeBtn}
-                >
-                  {showConfirmPwd ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showPwd ? 'text' : 'password'}
+                    name="password"
+                    placeholder="Contraseña"
+                    value={formData.password}
+                    onChange={handleChange}
+                    onFocus={() => setFocusedField('password')}
+                    onBlur={() => setFocusedField(null)}
+                    style={{ ...inputStyle('password'), paddingRight: '3rem' }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPwd(!showPwd)}
+                    style={s.eyeBtn}
+                  >
+                    {showPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+                <div style={{ position: 'relative' }}>
+                  <input
+                    type={showConfirmPwd ? 'text' : 'password'}
+                    name="confirmPassword"
+                    placeholder="Confirmar contraseña"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    onFocus={() => setFocusedField('confirmPassword')}
+                    onBlur={() => setFocusedField(null)}
+                    style={{ ...inputStyle('confirmPassword'), paddingRight: '3rem' }}
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                    style={s.eyeBtn}
+                  >
+                    {showConfirmPwd ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+                </div>
+
+                {/* Selector de Comunidad Autónoma (Ahora debajo de confirmar contraseña) */}
+                <div style={{ position: 'relative' }}>
+                  <select
+                    name="regionId"
+                    value={formData.regionId}
+                    onChange={handleChange}
+                    onFocus={() => setFocusedField('regionId')}
+                    onBlur={() => setFocusedField(null)}
+                    style={inputStyle('regionId')}
+                    required
+                  >
+                    <option value="">Selecciona tu Comunidad</option>
+                    {regions.map(r => (
+                      <option key={r.id} value={r.id}>{r.name}</option>
+                    ))}
+                  </select>
+                </div>
               </div>
 
-              {/* Selector de Comunidad Autónoma (Ahora debajo de confirmar contraseña) */}
-              <div style={{ position: 'relative' }}>
-                <select
-                  name="regionId"
-                  value={formData.regionId}
-                  onChange={handleChange}
-                  onFocus={() => setFocusedField('regionId')}
-                  onBlur={() => setFocusedField(null)}
-                  style={inputStyle('regionId')}
-                  required
-                >
-                  <option value="">Selecciona tu Comunidad</option>
-                  {regions.map(r => (
-                    <option key={r.id} value={r.id}>{r.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="register-submit"
-              style={{
-                ...s.submitBtn,
-                opacity: status === 'loading' ? 0.7 : 1,
-                cursor: status === 'loading' ? 'wait' : 'pointer',
-              }}
-              disabled={status === 'loading'}
-            >
-              {status === 'loading' ? 'Creando cuenta...' : 'Registrarse ahora'}
-              {status !== 'loading' && <ArrowRight size={18} />}
-            </button>
-          </form>
-
-          <footer style={{ marginTop: '0.5rem' }}>
-            <p style={s.footerText}>
-              ¿Ya tienes cuenta?{' '}
-              <Link to="/login" style={s.footerLink} className="register-footer-link">
-                Inicia sesión
-              </Link>
-            </p>
-
-            <div style={s.legalBar}>
-              {['Privacidad', 'Términos', 'Soporte'].map((t) => (
-                <a key={t} href="#" style={s.legalLink}>{t}</a>
-              ))}
-            </div>
-          </footer>
+              <button
+                type="submit"
+                className="register-submit"
+                style={{
+                  ...s.submitBtn,
+                  opacity: status === 'loading' ? 0.7 : 1,
+                  cursor: status === 'loading' ? 'wait' : 'pointer',
+                }}
+                disabled={status === 'loading'}
+              >
+                {status === 'loading' ? 'Creando cuenta...' : 'Registrarse ahora'}
+                {status !== 'loading' && <ArrowRight size={18} />}
+              </button>
+            </form>
+          </div>
         </div>
+
+        {/* Pie unificado y fijado al final */}
+        <footer style={{
+          paddingBottom: '2rem',
+          width: '100%',
+          maxWidth: '24rem',
+          textAlign: 'center',
+          flexShrink: 0
+        }}>
+          <p style={s.footerText}>
+            ¿Ya tienes cuenta?{' '}
+            <Link to="/login" style={s.footerLink} className="register-footer-link">
+              Inicia sesión
+            </Link>
+          </p>
+
+          <div style={s.legalBar}>
+            {['Privacidad', 'Términos', 'Soporte'].map((t) => (
+              <a key={t} href="#" style={s.legalLink}>{t}</a>
+            ))}
+          </div>
+        </footer>
       </section>
     </div>
   );

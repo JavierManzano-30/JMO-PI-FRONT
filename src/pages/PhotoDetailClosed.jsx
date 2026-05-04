@@ -335,7 +335,7 @@ export function PhotoDetailClosed() {
 
             <div className="inline-actions photo-secondary-actions">
               <Link className="btn btn-ghost" to={`/app/photos/${photo.id}`}>Volver al detalle activo</Link>
-              <Link className="btn" to="/app/winners">Ver clasificación completa</Link>
+              <Link className="btn" to="/app/contests">Ver concursos</Link>
               {canDeletePhoto && (
                 <button className="btn btn-ghost" type="button" onClick={handleDeletePhoto} disabled={isDeletingPhoto}>
                   {isDeletingPhoto ? 'Eliminando...' : 'Eliminar foto'}

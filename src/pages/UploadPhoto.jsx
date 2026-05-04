@@ -1,6 +1,6 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { 
+import {
   uploadImage, 
   createSubmission, 
   getContests, 
@@ -8,7 +8,6 @@ import {
   getRegions 
 } from '../services/supabaseService';
 import { useAuth } from '../hooks/useAuth';
-import { supabase } from '../lib/supabase';
 import { 
   Upload, 
   CheckCircle, 
@@ -142,6 +141,11 @@ const s = {
 export function UploadPhoto() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const rawBackendUserId = user?.backendId ?? user?.id;
+  const backendUserId = typeof rawBackendUserId === 'number'
+    ? (Number.isInteger(rawBackendUserId) && rawBackendUserId > 0 ? rawBackendUserId : null)
+    : (typeof rawBackendUserId === 'string' && /^\d+$/.test(rawBackendUserId) ? Number(rawBackendUserId) : null);
+  const canWriteData = Number.isInteger(backendUserId) && backendUserId > 0;
 
   const [options, setOptions] = useState({ contests: [], categories: [], regions: [] });
   const [formData, setFormData] = useState({
@@ -168,6 +172,9 @@ export function UploadPhoto() {
         if (c.length > 0) {
           setFormData(prev => ({ ...prev, contestId: String(c[0].id) }));
         }
+        if (reg.length > 0) {
+          setFormData(prev => ({ ...prev, regionId: prev.regionId || String(reg[0].id) }));
+        }
       } catch (err) {
         console.error(err);
         setError('Error al conectar con la base de datos.');
@@ -175,24 +182,6 @@ export function UploadPhoto() {
     }
     loadData();
   }, []);
-
-  // 2. Cargar región desde perfil
-  useEffect(() => {
-    async function loadUserRegion() {
-      if (!user?.id) return;
-      
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('region_id')
-        .eq('id', user.id)
-        .single();
-        
-      if (!error && profile?.region_id) {
-        setFormData(prev => ({ ...prev, regionId: profile.region_id }));
-      }
-    }
-    loadUserRegion();
-  }, [user?.id]);
 
   const processFile = (selected) => {
     if (!selected) return;
@@ -235,6 +224,7 @@ export function UploadPhoto() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!canWriteData) return setError('Tu cuenta actual no está enlazada para subir fotos en esta base de datos.');
     if (!file) return setError('Es obligatorio subir una fotografía.');
     if (!formData.title) return setError('Escribe un título para tu obra.');
     if (!formData.contestId) return setError('Selecciona el concurso en el que participas.');
@@ -243,9 +233,9 @@ export function UploadPhoto() {
     setError('');
 
     try {
-      const publicUrl = await uploadImage(file, user?.id || 'guest');
+      const publicUrl = await uploadImage(file, user?.authId || user?.id || 'guest');
       await createSubmission({
-        userId: user.id,
+        userId: backendUserId,
         contestId: formData.contestId,
         categoryId: formData.categoryId || null,
         regionId: formData.regionId || null,
@@ -322,11 +312,14 @@ export function UploadPhoto() {
                 </select>
               </div>
               <div style={s.inputGroup}>
-                <label style={s.label}><Tag size={14} /> Categoría</label>
+                <label style={s.label}><Tag size={14} /> Categoría (opcional)</label>
                 <select style={s.select} value={formData.categoryId} onChange={e => setFormData(p => ({ ...p, categoryId: e.target.value }))}>
-                  <option value="">Sin categoría</option>
+                  <option value="">Sin categoría (recomendado)</option>
                   {options.categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
                 </select>
+                <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                  Para concursos temáticos te recomendamos dejarlo en sin categoría.
+                </span>
               </div>
             </div>
 

@@ -182,6 +182,7 @@ export function Winners() {
 
   const activeByTheme = useMemo(() => groupEntriesByTheme(activeEntries), [activeEntries]);
   const closedByTheme = useMemo(() => groupEntriesByTheme(historyEntries), [historyEntries]);
+  const contestsBasePath = isAuthenticated ? '/app/contests' : '/contests';
 
   const handleFilterChange = (key, value) => {
     const next = new URLSearchParams(params);
@@ -196,11 +197,11 @@ export function Winners() {
       {/* --- HERO AREA --- */}
       <header className="winners-hero">
         <div className="winners-hero-content">
-          <span className="eyebrow">SnapNation Hall of Fame</span>
-          <h1>Consagrando la <br /> Excelencia Fotográfica</h1>
+          <span className="eyebrow">SnapNation Concursos</span>
+          <h1>Concursos <br /> Activos e Históricos</h1>
           <p>
-            Desde las rondas en vivo hasta los ganadores históricos. 
-            Celebramos la visión de nuestra comunidad a través del objetivo.
+            Consulta los concursos activos y los ya finalizados, con sus clasificaciones
+            y resultados oficiales por comunidad.
           </p>
         </div>
       </header>
@@ -230,11 +231,11 @@ export function Winners() {
         <div className="winners-section-head">
           <div>
             <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Flame size={14} /> LIVE RANKING
+              <Flame size={14} /> CONCURSOS ACTIVOS
             </span>
-            <h2>Batallas en Curso</h2>
+            <h2>Concursos en Curso</h2>
           </div>
-          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Resultados provisionales en tiempo real</p>
+          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Clasificación provisional en tiempo real</p>
         </div>
 
         {activeStatus === 'loading' && <StatusMessage tone="loading">Sincronizando rankings...</StatusMessage>}
@@ -247,8 +248,11 @@ export function Winners() {
               <div className="theme-bracket" key={`active-${group.themeId}`}>
                 <div className="theme-bracket-header">
                   <h3>{group.themeTitle}</h3>
-                  <div className="status-pulse">
-                    <span className="pulse-dot" /> Live
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div className="status-pulse">
+                      <span className="pulse-dot" /> Live
+                    </div>
+                    <Link className="btn btn-link" to={`${contestsBasePath}/${group.themeId}`}>Ver concurso</Link>
                   </div>
                 </div>
 
@@ -275,7 +279,7 @@ export function Winners() {
                 </div>
                 
                 <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                  <Link to={isAuthenticated ? `/app/photos/${group.rows[0].photoId}` : '/login'} className="btn btn-ghost btn-sm">
+                  <Link to={`/photos/${group.rows[0].photoId}`} className="btn btn-ghost btn-sm">
                     Ir a la batalla <ArrowRight size={14} />
                   </Link>
                 </div>
@@ -294,7 +298,7 @@ export function Winners() {
             </span>
             <h2>Salón de la Fama</h2>
           </div>
-          <Link to="/app/winners" className="btn btn-link">Ver todos</Link>
+          <Link to="/app/contests" className="btn btn-link">Ver concursos</Link>
         </div>
 
         {officialStatus === 'loading' && <StatusMessage tone="loading">Abriendo el salón...</StatusMessage>}
@@ -317,7 +321,7 @@ export function Winners() {
                     <div className="hall-votes">{entry.votes} pts</div>
                   </div>
                   <Link 
-                    to={isAuthenticated ? `/app/photos/${entry.photoId}/closed` : '/login'} 
+                    to={`/photos/${entry.photoId}`} 
                     style={{ position: 'absolute', inset: 0, zIndex: 2 }}
                     aria-label="Ver detalle"
                   />
@@ -335,7 +339,7 @@ export function Winners() {
             <span style={{ color: '#94a3b8', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <History size={14} /> ARCHIVE
             </span>
-            <h2>Resultados Históricos</h2>
+            <h2>Concursos Finalizados</h2>
           </div>
         </div>
 
@@ -349,7 +353,10 @@ export function Winners() {
               <div className="theme-bracket" key={`closed-${group.themeId}`} style={{ opacity: 0.85 }}>
                 <div className="theme-bracket-header">
                   <h3>{group.themeTitle}</h3>
-                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>FINALIZADO</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>FINALIZADO</span>
+                    <Link className="btn btn-link" to={`${contestsBasePath}/${group.themeId}`}>Ver concurso</Link>
+                  </div>
                 </div>
 
                 <div className="ranking-stack">
@@ -368,7 +375,7 @@ export function Winners() {
                       </div>
                       <Link 
                         className="btn btn-icon btn-sm" 
-                        to={isAuthenticated ? `/app/photos/${entry.photoId}/closed` : '/login'}
+                        to={`/photos/${entry.photoId}`}
                       >
                         <ArrowRight size={16} />
                       </Link>

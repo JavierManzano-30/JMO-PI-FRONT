@@ -1,13 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { AuthContext } from '../context/AuthContext';
+import { resolveBackendUser } from '../services/supabaseService';
 
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
   const [isBootstrapping, setIsBootstrapping] = useState(true);
 
-  // 1. Función para hidratar el usuario con su perfil de la DB
+  // 1. Función para hidratar el usuario con su perfil
   const hydrateUser = async (authUser) => {
     console.log("🛠️ Hidratando usuario...");
     if (!authUser) {
@@ -16,25 +17,23 @@ export function AuthProvider({ children }) {
     }
 
     try {
-      console.log("🔍 Buscando perfil...");
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single();
-
-      if (profile && !error) {
-        console.log("✅ Perfil recuperado");
-        setUser({
-          ...authUser,
-          ...profile,
-          displayName: profile.full_name,
-          avatarUrl: profile.avatar_url
-        });
-      } else {
-        console.log("ℹ️ Usando auth básica (sin perfil en DB)");
-        setUser(authUser);
-      }
+      console.log("✅ Usando metadata de autenticación");
+      const metadata = authUser.user_metadata || {};
+      const backendUser = await resolveBackendUser(authUser);
+      
+      setUser({
+        ...authUser,
+        authId: authUser.id,
+        backendId: backendUser?.id || null,
+        username: backendUser?.username || metadata.username || authUser.email?.split('@')[0],
+        full_name: backendUser?.display_name || metadata.full_name || metadata.name || authUser.email?.split('@')[0],
+        avatar_url: backendUser?.avatar_url || metadata.avatar_url || metadata.picture || null,
+        community_id: backendUser?.community_id ?? null,
+        community_name: backendUser?.community_name || metadata.region_name || metadata.community_name || null,
+        regionName: backendUser?.community_name || metadata.region_name || metadata.community_name || null,
+        displayName: backendUser?.display_name || metadata.full_name || metadata.name || authUser.email?.split('@')[0],
+        avatarUrl: backendUser?.avatar_url || metadata.avatar_url || metadata.picture || null
+      });
     } catch (err) {
       console.error("❌ Fallo en hidratación:", err);
       setUser(authUser);
@@ -76,6 +75,17 @@ export function AuthProvider({ children }) {
     return data;
   };
 
+  const loginWithOAuth = async (provider) => {
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: {
+        redirectTo: window.location.origin + '/app/dashboard'
+      }
+    });
+    if (error) throw error;
+    return data;
+  };
+
   const register = async ({ username, email, password, regionId }) => {
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -83,13 +93,19 @@ export function AuthProvider({ children }) {
       options: {
         data: {
           username,
-          full_name: email,
+          full_name: username,
           region_id: regionId
         }
       }
     });
 
     if (error) throw error;
+
+    if (data?.session) {
+      setSession(data.session);
+      await hydrateUser(data.session.user);
+    }
+
     return data;
   };
 
@@ -120,6 +136,7 @@ export function AuthProvider({ children }) {
       isAuthenticated: Boolean(session), // Permitimos entrar si hay sesión, aunque el perfil esté cargando
       isBootstrapping,
       login,
+      loginWithOAuth,
       register,
       refreshMe,
       updateProfile,
