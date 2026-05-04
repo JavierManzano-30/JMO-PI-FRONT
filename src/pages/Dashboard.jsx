@@ -256,6 +256,7 @@ export function Dashboard() {
   const isHorizontal = (index) => index % 5 === 0; 
 
   return (
+<<<<<<< Updated upstream
     <div style={s.page}>
       <style>{`
         .action-icon { transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1); }
@@ -306,6 +307,130 @@ export function Dashboard() {
                       <span style={{ opacity: 0.3 }}>•</span>
                       <span style={{ color: tokens.colors.textMuted }}>{item.categories?.name || 'Sin Cat.'}</span>
                     </div>
+=======
+    <div className="dashboard">
+      <section className="theme-hero">
+        <div>
+          <p className="theme-kicker">Tema semanal</p>
+          <h2 className="theme-title">Paisajes espectaculares</h2>
+          <p className="theme-meta">
+            Competencia por comunidad. Cada persona puede subir 1 foto por semana. Las votaciones se
+            cierran el viernes.
+          </p>
+          <div className="theme-badges">
+            <span className="badge primary">1 foto por semana</span>
+            <span className="badge">Cierre viernes</span>
+            <span className="badge">Final nacional</span>
+          </div>
+        </div>
+        <div className="timeline-card">
+          <div className="timeline-item">
+            <span className="timeline-label">Lunes - Jueves</span>
+            <strong>Sube tu foto</strong>
+          </div>
+          <div className="timeline-item">
+            <span className="timeline-label">Hasta viernes 23:59</span>
+            <strong>Votaciones por comunidad</strong>
+          </div>
+          <div className="timeline-item">
+            <span className="timeline-label">Fin de semana</span>
+            <strong>Ganadores de comunidad</strong>
+          </div>
+          <div className="timeline-item">
+            <span className="timeline-label">Final del pais</span>
+            <strong>Mejor foto nacional</strong>
+          </div>
+        </div>
+      </section>
+      <div className="filters">
+        <div className="filters-left">
+          <select aria-label="Comunidad">
+            <option>Comunidad</option>
+            <option>SnapNation</option>
+            <option>Popular</option>
+          </select>
+          <select aria-label="Categoria">
+            <option>Categoria</option>
+            <option>Paisaje</option>
+            <option>Naturaleza</option>
+            <option>Urbano</option>
+          </select>
+          <select aria-label="Ordenar">
+            <option>Ordenar</option>
+            <option>Mas votadas</option>
+            <option>Mas recientes</option>
+          </select>
+        </div>
+        <div className="filters-center pagination">
+          {pageNumber === 1 ? (
+            <span className="pagination-arrow disabled">&lt;</span>
+          ) : (
+            <Link className="pagination-arrow" to={`?page=${prevPage}`}>
+              &lt;
+            </Link>
+          )}
+          {pageNumber > 2 && (
+            <>
+              <Link className="page-link" to="?page=1">
+                1
+              </Link>
+              <span className="pagination-ellipsis">...</span>
+            </>
+          )}
+          {windowPages.map((value) => (
+            <Link
+              key={value}
+              className={`page-link ${pageNumber === value ? 'active' : ''}`}
+              to={`?page=${value}`}
+            >
+              {value}
+            </Link>
+          ))}
+          {pageNumber < totalPages - 1 && (
+            <>
+              <span className="pagination-ellipsis">...</span>
+              <Link className="page-link" to={`?page=${totalPages}`}>
+                {totalPages}
+              </Link>
+            </>
+          )}
+          {pageNumber === totalPages ? (
+            <span className="pagination-arrow disabled">&gt;</span>
+          ) : (
+            <Link className="pagination-arrow" to={`?page=${nextPage}`}>
+              &gt;
+            </Link>
+          )}
+        </div>
+        <div className="filters-right">
+          <strong>Comunidad activa:</strong> Madrid Centro
+        </div>
+      </div>
+      <StatusBlock state={state} />
+      {state === 'empty' && (
+        <Link className="btn outline" to="/app/photos/upload" style={{ marginTop: 16 }}>
+          Subir primera foto
+        </Link>
+      )}
+      {state === 'default' && (
+        <section className="gallery-card">
+          <h3 className="gallery-title">GALERIA DE FOTOS</h3>
+          <div className="gallery-cards">
+            {orderedPhotos.map((photo) => (
+              <article className="photo-card" key={photo.id}>
+                <Link className="photo-link" to={`/app/photos/${photo.id}`}>
+                  <img src={photo.image} alt={photo.category} />
+                </Link>
+                <div className="photo-info">
+                  <div className="photo-meta">
+                    <div>{photo.user}</div>
+                    <div>{photo.city}</div>
+                    <div>{photo.category}</div>
+                  </div>
+                  <div className="photo-actions">
+                    <div className="votes">❤ {photo.votes} votos</div>
+                    <button className="btn">Votar</button>
+>>>>>>> Stashed changes
                   </div>
                 </div>
 

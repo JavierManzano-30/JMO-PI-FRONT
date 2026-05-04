@@ -361,6 +361,7 @@ export function Register() {
   });
 
   return (
+<<<<<<< Updated upstream
     <div style={s.root(dark)}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;900&display=swap');
@@ -386,6 +387,44 @@ export function Register() {
 
         <div style={s.logo}>
           <img src={logoSrc} alt="SnapNation" height="140" style={{ display: 'block', objectFit: 'contain', filter: dark ? 'brightness(0) invert(1) drop-shadow(0px 2px 8px rgba(0,0,0,0.5))' : 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))', transition: 'filter 0.3s' }} />
+=======
+    <div className="auth-layout">
+      <div className="card auth-card">
+        <h2 className="card-title">Registro</h2>
+        <p className="card-subtle">Crea tu cuenta para competir cada semana en tu comunidad.</p>
+        <form className="form">
+          <div className="field">
+            <label htmlFor="name">Nombre completo</label>
+            <input id="name" type="text" placeholder="Alicia Romero" />
+          </div>
+          <div className="field">
+            <label htmlFor="user">Usuario</label>
+            <input id="user" type="text" placeholder="alicia88" />
+          </div>
+          <div className="field">
+            <label htmlFor="email">Email</label>
+            <input id="email" type="email" placeholder="alicia@mail.com" />
+          </div>
+          <div className="field">
+            <label htmlFor="pass">Contrasena</label>
+            <input id="pass" type="password" placeholder="********" />
+          </div>
+          <button className="btn" type="button">
+            Crear cuenta
+          </button>
+          <div className="helper">
+            Ya tienes cuenta? <Link to="/login">Inicia sesion</Link>
+          </div>
+        </form>
+        <div style={{ marginTop: 18 }}>
+          <StateSwitcher options={STATE_OPTIONS} current={state} />
+          {state === 'error' && (
+            <div className="status error">No se pudo registrar. Intenta de nuevo.</div>
+          )}
+          {state === 'fields' && (
+            <div className="status error">Completa los campos obligatorios.</div>
+          )}
+>>>>>>> Stashed changes
         </div>
 
         <div style={s.leftBottom}>
