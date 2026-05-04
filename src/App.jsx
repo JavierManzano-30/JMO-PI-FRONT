@@ -63,7 +63,7 @@ export function App() {
         <ScrollToTop />
         <Suspense fallback={<LoadingRoute />}>
           <Routes>
-            <Route path="/" element={<Navigate to="/contests" replace />} />
+            <Route path="/" element={<Navigate to="/gallery" replace />} />
             <Route element={<LoginLayout />}>
               <Route path="/login" element={<Login />} />
               <Route path="/forgot-password" element={<ForgotPassword />} />
