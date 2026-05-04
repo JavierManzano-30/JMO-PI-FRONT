@@ -252,7 +252,6 @@ export function UploadPhoto() {
   };
 
   return (
-<<<<<<< Updated upstream
     <div style={s.container}>
       <style>{`
         .upload-input:focus { border-color: #3b82f6 !important; }
@@ -272,41 +271,6 @@ export function UploadPhoto() {
               color: '#64748b', textDecoration: 'none', fontSize: '0.875rem', marginBottom: '1rem' 
             }}>
               <ArrowLeft size={16} /> Volver al panel
-=======
-    <div className="split">
-      <div className="card">
-        <h2 className="section-title">Subir foto</h2>
-        <p className="section-subtitle">
-          Completa la ficha para competir en tu comunidad. Recuerda: 1 foto por semana.
-        </p>
-        <form className="form">
-          <div className="field">
-            <label htmlFor="title">Titulo</label>
-            <input id="title" type="text" placeholder="Atardecer urbano" />
-          </div>
-          <div className="field">
-            <label htmlFor="description">Descripcion</label>
-            <textarea id="description" rows="4" placeholder="Describe la historia de la foto..." />
-          </div>
-          <div className="field">
-            <label htmlFor="category">Categoria</label>
-            <select id="category">
-              <option>Retrato</option>
-              <option>Paisaje</option>
-              <option>Urbano</option>
-            </select>
-          </div>
-          <div className="field">
-            <label htmlFor="file">Archivo</label>
-            <input id="file" type="file" />
-          </div>
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <button className="btn" type="button" onClick={() => navigate('/app/photos/upload/success')}>
-              Subir
-            </button>
-            <Link className="btn outline" to="/app/dashboard">
-              Cancelar
->>>>>>> Stashed changes
             </Link>
             <h1 style={s.title}>Publicar Obra</h1>
             <p style={s.subtitle}>Configura los detalles de tu participación.</p>
@@ -424,21 +388,6 @@ export function UploadPhoto() {
               </div>
             </div>
           </div>
-<<<<<<< Updated upstream
-=======
-        </form>
-      </div>
-      <div className="card">
-        <h3 className="card-title">Vista previa</h3>
-        <img className="hero-image" src="/assets/photos/imagen1.jpg" alt="Vista previa" />
-        <p className="helper" style={{ marginTop: 12 }}>
-          Formatos admitidos: JPG, PNG. Max 8MB.
-        </p>
-        <div className="rule-list" style={{ marginTop: 16 }}>
-          <div className="rule-item">Las votaciones se cierran el viernes 23:59.</div>
-          <div className="rule-item">Los ganadores de comunidad pasan a la final del pais.</div>
-          <div className="rule-item">Mantén tu foto alineada con el tema semanal.</div>
->>>>>>> Stashed changes
         </div>
       </div>
     </div>

@@ -5,7 +5,6 @@ import { useAuth } from './hooks/useAuth.js';
 import { PublicLayout } from './layouts/PublicLayout.jsx';
 import { LoginLayout } from './layouts/LoginLayout.jsx';
 import { PrivateLayout } from './layouts/PrivateLayout.jsx';
-<<<<<<< Updated upstream
 import { ScrollToTop } from './components/ScrollToTop.jsx';
 
 const Login = lazy(() => import('./pages/Login.jsx').then((m) => ({ default: m.Login })));
@@ -31,21 +30,6 @@ const CookiePolicy = lazy(() => import('./pages/legal/CookiePolicy.jsx').then((m
 function LoadingRoute() {
   return <div className="status loading">Cargando...</div>;
 }
-=======
-import { Login } from './pages/Login.jsx';
-import { Register } from './pages/Register.jsx';
-import { RecoverPassword } from './pages/RecoverPassword.jsx';
-import { NoSession } from './pages/NoSession.jsx';
-import { Dashboard } from './pages/Dashboard.jsx';
-import { PhotoDetail } from './pages/PhotoDetail.jsx';
-import { PhotoDetailClosed } from './pages/PhotoDetailClosed.jsx';
-import { UploadPhoto } from './pages/UploadPhoto.jsx';
-import { UploadSuccess } from './pages/UploadSuccess.jsx';
-import { Profile } from './pages/Profile.jsx';
-import { ProfileEdit } from './pages/ProfileEdit.jsx';
-import { Forbidden } from './pages/Forbidden.jsx';
-import { NotFound } from './pages/NotFound.jsx';
->>>>>>> Stashed changes
 
 function RequireAuth({ children }) {
   const { isAuthenticated, isBootstrapping } = useAuth();
@@ -75,7 +59,6 @@ function RequireRole({ role, children }) {
 export function App() {
   return (
     <AuthProvider>
-<<<<<<< Updated upstream
       <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ScrollToTop />
         <Suspense fallback={<LoadingRoute />}>
@@ -129,46 +112,6 @@ export function App() {
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Suspense>
-=======
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route element={<PublicLayout />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/recover" element={<RecoverPassword />} />
-          <Route path="/no-session" element={<NoSession />} />
-        </Route>
-          <Route
-            path="/app"
-            element={(
-              <RequireAuth>
-                <PrivateLayout />
-              </RequireAuth>
-            )}
-          >
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="photos/upload" element={<UploadPhoto />} />
-            <Route path="photos/upload/success" element={<UploadSuccess />} />
-            <Route path="photos/:photoId" element={<PhotoDetail />} />
-            <Route path="photos/:photoId/closed" element={<PhotoDetailClosed />} />
-            <Route path="profile" element={<Profile />} />
-            <Route path="profile/edit" element={<ProfileEdit />} />
-          </Route>
-          <Route
-            path="/unauthorized"
-            element={(
-              <RequireAuth>
-                <PrivateLayout />
-              </RequireAuth>
-            )}
-          >
-            <Route index element={<Forbidden />} />
-          </Route>
-          <Route path="*" element={<NotFound />} />
-        </Routes>
->>>>>>> Stashed changes
       </BrowserRouter>
     </AuthProvider>
   );

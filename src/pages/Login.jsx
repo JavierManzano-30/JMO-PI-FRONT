@@ -399,7 +399,6 @@ export function Login() {
   });
 
   return (
-<<<<<<< Updated upstream
     <div style={s.root(dark)}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
@@ -434,44 +433,6 @@ export function Login() {
           <div style={s.metaRow}>
             <span style={s.metaItem}>Granada, ES</span>
             <span style={s.metaItem}>Tema: Mascotas</span>
-=======
-    <div className="login-split">
-      <section className="login-hero">
-        <p className="theme-kicker">SnapNation</p>
-        <h1>
-          La fotografia que nace en tu <span>comunidad</span>.
-        </h1>
-        <p>
-          Cada semana hay un tema nuevo. Sube una foto, vota hasta el viernes y compite por el
-          ganador nacional.
-        </p>
-        <div className="login-badges">
-          <span className="login-badge">1 foto por semana</span>
-          <span className="login-badge">Cierre viernes 23:59</span>
-          <span className="login-badge">Final del pais</span>
-        </div>
-        <div className="login-collage">
-          <img src="/assets/photos/imagen1.jpg" alt="Foto destacada 1" />
-          <img src="/assets/photos/imagen2.jpg" alt="Foto destacada 2" />
-          <img src="/assets/photos/imagen3.jpg" alt="Foto destacada 3" />
-        </div>
-      </section>
-      <div className="login-card">
-        <h2 className="login-card-title">Iniciar sesion</h2>
-        <p className="login-card-sub">
-          Accede para votar en tu comunidad y seguir la final del pais.
-        </p>
-        <form className="form">
-          <div className="field">
-            <label htmlFor="user">Usuario</label>
-            <input
-              id="user"
-              type="text"
-              placeholder="javier"
-              value={credentials.user}
-              onChange={(event) => setCredentials((prev) => ({ ...prev, user: event.target.value }))}
-            />
->>>>>>> Stashed changes
           </div>
         </div>
       </section>
@@ -600,7 +561,6 @@ export function Login() {
               </div>
             </div>
           </div>
-<<<<<<< Updated upstream
         </div>
 
         {/* Pie fijado al final */}
@@ -625,27 +585,6 @@ export function Login() {
           </div>
         </footer>
       </section>
-=======
-          <div className="login-actions">
-            <label className="helper" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <input id="remember" type="checkbox" />
-              Recuerdame
-            </label>
-          </div>
-          <button className="btn" type="button" onClick={handleLogin} disabled={status === 'loading'}>
-            {status === 'loading' ? 'Cargando...' : 'Login'}
-          </button>
-          <Link className="login-link login-forgot" to="/recover">
-            Has olvidado tu contrasena?
-          </Link>
-        </form>
-        {status === 'error' && (
-          <div className="status error">
-            Usuario o contrasena incorrectos. Prueba con javier / 1234.
-          </div>
-        )}
-      </div>
->>>>>>> Stashed changes
     </div>
   );
 }

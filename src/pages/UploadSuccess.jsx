@@ -36,13 +36,8 @@ export function UploadSuccess() {
           <Link className="btn" to="/app/dashboard">
             Ver galería
           </Link>
-<<<<<<< Updated upstream
           <Link className="btn btn-ghost" to="/app/photos/upload">
             Publicar otra foto
-=======
-          <Link className="btn outline" to="/app/photos/01">
-            Ver mi foto
->>>>>>> Stashed changes
           </Link>
         </div>
       </article>

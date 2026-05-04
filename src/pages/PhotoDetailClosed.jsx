@@ -244,7 +244,6 @@ export function PhotoDetailClosed() {
   }
 
   return (
-<<<<<<< Updated upstream
     <section className="photo-detail-page photo-detail-page-closed">
       <article className="card photo-detail-main">
         <header className="photo-detail-head">
@@ -258,27 +257,6 @@ export function PhotoDetailClosed() {
           <div className="photo-detail-head-meta">
             <span className={`contest-pill contest-pill-${contestStatus.tone}`}>{contestStatus.label}</span>
             <strong className="vote-counter">{photo.votes} votos finales</strong>
-=======
-    <div className="split">
-      <div className="card">
-        <h2 className="section-title">Votacion cerrada</h2>
-        <p className="section-subtitle">
-          La ronda termino. Ganadores por comunidad listos para la final del pais.
-        </p>
-        <img className="hero-image" src={photo.image} alt={`Foto de ${photo.user}`} />
-        <div className="list">
-          <div className="list-item">
-            <span>Puntaje final</span>
-            <strong>9.4</strong>
-          </div>
-          <div className="list-item">
-            <span>Comunidad</span>
-            <strong>{photo.city}</strong>
-          </div>
-          <div className="list-item">
-            <span>Posicion</span>
-            <strong>3 de 48</strong>
->>>>>>> Stashed changes
           </div>
         </header>
 

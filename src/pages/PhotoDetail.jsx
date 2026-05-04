@@ -293,7 +293,6 @@ export function PhotoDetail() {
   const backTo = user ? '/app/dashboard' : '/gallery';
 
   return (
-<<<<<<< Updated upstream
     <div style={s.page}>
       <Link to={backTo} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: tokens.colors.textMuted, textDecoration: 'none', fontWeight: 600 }}>
         <ArrowLeft size={18} /> Volver a la galería
@@ -303,40 +302,6 @@ export function PhotoDetail() {
         {/* Lado Izquierdo: Imagen */}
         <div style={s.imageBox}>
           <img src={photo.image_url} alt={photo.title} style={s.image} />
-=======
-    <div className="split">
-      <div className="card">
-        <h2 className="section-title">Detalle de la foto</h2>
-        <p className="section-subtitle">Foto #{photoId} en votacion abierta.</p>
-        <button className="image-button" type="button" onClick={() => setIsOpen(true)}>
-          <img className="hero-image" src={photo.image} alt={`Foto de ${photo.user}`} />
-        </button>
-        <div className="list photo-details">
-          <div className="list-item">
-            <strong>Autor</strong>
-            <span>{photo.user}</span>
-          </div>
-          <div className="list-item">
-            <strong>Comunidad</strong>
-            <span>{photo.city}</span>
-          </div>
-          <div className="list-item">
-            <strong>Categoria</strong>
-            <span>{photo.category}</span>
-          </div>
-          <div className="list-item">
-            <strong>Tema semanal</strong>
-            <span>Paisajes espectaculares</span>
-          </div>
-          <div className="list-item description-item">
-            <strong>Descripcion</strong>
-            <span>{photo.description}</span>
-          </div>
-          <div className="list-item">
-            <strong>Votos</strong>
-            <span>{photo.votes}</span>
-          </div>
->>>>>>> Stashed changes
         </div>
 
         {/* Lado Derecho: Info */}
