@@ -1,17 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { 
-  User, 
-  MapPin, 
-  Shield, 
-  Calendar, 
-  Image as ImageIcon, 
-  Heart, 
+import {
+  getUserById,
+  getFollowStats,
+  isFollowingUser,
+  followUser,
+  unfollowUser,
+  getFollowers,
+  getFollowing,
+} from '../services/supabaseService';
+import {
+  User,
+  MapPin,
+  Shield,
+  Calendar,
+  Image as ImageIcon,
   TrendingUp,
   Settings,
-  ArrowLeft
+  ArrowLeft,
+  UserPlus,
+  UserMinus,
+  MessageCircle,
 } from 'lucide-react';
 
 function formatDate(value) {
@@ -21,199 +32,317 @@ function formatDate(value) {
   return new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' }).format(date);
 }
 
-function formatVotesAverage(value) {
-  if (!Number.isFinite(value)) return '0';
-  return new Intl.NumberFormat('es-ES', {
-    maximumFractionDigits: 1,
-    minimumFractionDigits: value % 1 === 0 ? 0 : 1,
-  }).format(value);
+function parsePositiveInt(value) {
+  if (typeof value === 'number' && Number.isInteger(value) && value > 0) return value;
+  if (typeof value === 'string' && /^\d+$/.test(value)) return Number(value);
+  return null;
 }
 
 export function Profile() {
   const { user } = useAuth();
-  const [userPhotos, setUserPhotos] = useState([]);
-  const [loadingPhotos, setLoadingPhotos] = useState(false);
-  const profileData = useMemo(() => {
-    if (!user) return null;
+  const { userId } = useParams();
+  const location = useLocation();
 
-    const metadata = user.user_metadata || {};
-    return {
-      username: metadata.username || user.username || user.email?.split('@')[0] || 'Usuario',
-      avatar_url: metadata.avatar_url || metadata.picture || user.avatar_url || '',
-      community_name: user.community_name || metadata.region_name || metadata.community_name || 'Sin comunidad asignada',
-      created_at: user.created_at || null,
-    };
-  }, [user]);
+  const ownBackendId = useMemo(() => parsePositiveInt(user?.backendId ?? user?.id), [user?.backendId, user?.id]);
+  const routeUserId = useMemo(() => parsePositiveInt(userId), [userId]);
+  const viewedUserId = routeUserId || ownBackendId;
+  const isOwnProfile = Boolean(viewedUserId && ownBackendId && viewedUserId === ownBackendId);
+  const isPublicRoute = location.pathname.startsWith('/users/');
+
+  const [profile, setProfile] = useState(null);
+  const [followStats, setFollowStats] = useState({ followers: 0, following: 0 });
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [userPhotos, setUserPhotos] = useState([]);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isFollowBusy, setIsFollowBusy] = useState(false);
 
   useEffect(() => {
-    async function loadUserPhotos() {
-      if (!Number.isInteger(user?.backendId) || user.backendId < 1) {
-        setUserPhotos([]);
+    async function loadProfileData() {
+      if (!viewedUserId) {
+        setIsLoading(false);
         return;
       }
 
-      setLoadingPhotos(true);
+      setIsLoading(true);
       try {
+        const [profileData, statsData, followersData, followingData] = await Promise.all([
+          getUserById(viewedUserId),
+          getFollowStats(viewedUserId),
+          getFollowers(viewedUserId, { limit: 10 }),
+          getFollowing(viewedUserId, { limit: 10 }),
+        ]);
+
+        setProfile(profileData);
+        setFollowStats(statsData);
+        setFollowers(followersData);
+        setFollowing(followingData);
+
+        if (ownBackendId && !isOwnProfile) {
+          const followingState = await isFollowingUser(ownBackendId, viewedUserId);
+          setIsFollowing(followingState);
+        } else {
+          setIsFollowing(false);
+        }
+
         const { data, error } = await supabase
           .from('photos')
-          .select('id, title, image_url, created_at')
-          .eq('user_id', user.backendId)
+          .select('id, title, image_url, created_at, is_deleted')
+          .eq('user_id', viewedUserId)
           .eq('is_deleted', false)
           .order('created_at', { ascending: false });
 
         if (error) throw error;
         setUserPhotos(data || []);
       } catch (err) {
-        console.error('Error cargando fotos del perfil:', err);
+        console.error('Error cargando perfil:', err);
+        setProfile(null);
         setUserPhotos([]);
       } finally {
-        setLoadingPhotos(false);
+        setIsLoading(false);
       }
     }
 
-    loadUserPhotos();
-  }, [user?.backendId]);
+    loadProfileData();
+  }, [viewedUserId, ownBackendId, isOwnProfile]);
 
   const activity = useMemo(() => ({
     uploaded: userPhotos.length,
-    votesReceived: 0,
-    averageVotes: 0,
     lastPublishedAt: userPhotos[0]?.created_at || null,
   }), [userPhotos]);
 
-  const registeredAt = useMemo(() => formatDate(user?.created_at || profileData?.created_at), [user?.created_at, profileData?.created_at]);
-  const communityLabel = profileData?.community_name || 'Sin comunidad asignada';
+  const handleToggleFollow = async () => {
+    if (!ownBackendId || !viewedUserId || isOwnProfile || isFollowBusy) return;
+
+    setIsFollowBusy(true);
+    try {
+      if (isFollowing) {
+        await unfollowUser(ownBackendId, viewedUserId);
+        setIsFollowing(false);
+        setFollowStats((prev) => ({ ...prev, followers: Math.max(0, prev.followers - 1) }));
+      } else {
+        await followUser(ownBackendId, viewedUserId);
+        setIsFollowing(true);
+        setFollowStats((prev) => ({ ...prev, followers: prev.followers + 1 }));
+      }
+    } catch (err) {
+      console.error('No se pudo actualizar seguimiento:', err);
+    } finally {
+      setIsFollowBusy(false);
+    }
+  };
+
+  const backTo = user ? '/app/dashboard' : '/gallery';
+  const profileUsername = profile?.username || 'usuario';
+  const profileDisplayName = profile?.display_name || profile?.username || 'Usuario';
+  const profileEmail = profile?.email || 'Sin correo';
+  const profileCommunity = profile?.community_name || 'Sin comunidad asignada';
+
+  if (!viewedUserId) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem' }}>
+        <p style={{ maxWidth: '960px', margin: '0 auto', color: '#64748b' }}>
+          No se pudo resolver el usuario del perfil.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem', fontFamily: "'Inter', sans-serif" }}>
-      <header style={{ maxWidth: '1000px', margin: '0 auto 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Link to="/app/dashboard" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', textDecoration: 'none', fontWeight: 600 }}>
-          <ArrowLeft size={18} /> Volver al panel
+      <header style={{ maxWidth: '1000px', margin: '0 auto 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+        <Link to={backTo} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', textDecoration: 'none', fontWeight: 600 }}>
+          <ArrowLeft size={18} /> Volver
         </Link>
-        <Link to="/app/profile/edit" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fff', padding: '0.6rem 1.2rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0', color: '#0f172a', textDecoration: 'none', fontWeight: 600, boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)' }}>
-          <Settings size={18} /> Editar Perfil
-        </Link>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {isOwnProfile && !isPublicRoute && (
+            <Link to="/app/profile/edit" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#fff', padding: '0.6rem 1.2rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0', color: '#0f172a', textDecoration: 'none', fontWeight: 600 }}>
+              <Settings size={18} /> Editar Perfil
+            </Link>
+          )}
+
+          {!isOwnProfile && user && (
+            <>
+              <button
+                type="button"
+                onClick={handleToggleFollow}
+                disabled={isFollowBusy}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  background: isFollowing ? '#f8fafc' : '#2563eb',
+                  border: isFollowing ? '1px solid #cbd5e1' : '1px solid #2563eb',
+                  color: isFollowing ? '#334155' : '#fff',
+                  borderRadius: '0.75rem',
+                  padding: '0.62rem 1rem',
+                  fontWeight: 700,
+                  cursor: isFollowBusy ? 'wait' : 'pointer',
+                }}
+              >
+                {isFollowing ? <UserMinus size={16} /> : <UserPlus size={16} />}
+                {isFollowing ? 'Siguiendo' : 'Seguir'}
+              </button>
+
+              <Link
+                to={`/app/chat?user=${viewedUserId}`}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  borderRadius: '0.75rem',
+                  border: '1px solid #cbd5e1',
+                  padding: '0.62rem 1rem',
+                  background: '#fff',
+                  textDecoration: 'none',
+                  color: '#0f172a',
+                  fontWeight: 700,
+                }}
+              >
+                <MessageCircle size={16} /> Mensaje
+              </Link>
+            </>
+          )}
+        </div>
       </header>
 
       <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gap: '2rem' }}>
-        
-        <article style={{ background: '#fff', borderRadius: '2rem', padding: '3rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)', display: 'flex', gap: '2.5rem', alignItems: 'center', position: 'relative', overflow: 'hidden' }}>
-          <div style={{ position: 'absolute', top: 0, right: 0, width: '300px', height: '100%', background: 'linear-gradient(to left, rgba(59,130,246,0.03), transparent)', pointerEvents: 'none' }} />
-          
-          <div style={{ width: '140px', height: '140px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)', flexShrink: 0 }}>
-            {profileData?.avatar_url ? (
-              <img src={profileData.avatar_url} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} alt="Avatar" />
+        <article style={{ background: '#fff', borderRadius: '2rem', padding: '2.2rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)', display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ width: '132px', height: '132px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+            {profile?.avatar_url ? (
+              <img src={profile.avatar_url} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} alt="Avatar" />
             ) : (
               <User size={64} color="#cbd5e1" />
             )}
           </div>
 
-          <div style={{ flex: 1 }}>
-            <p style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>Perfil Miembro</p>
-            <h1 style={{ fontSize: '2.5rem', fontWeight: 900, color: '#0f172a', margin: '0 0 0.5rem', letterSpacing: '-0.02em' }}>
-              {profileData?.username || user?.user_metadata?.username || 'Usuario'}
-            </h1>
-            <p style={{ color: '#64748b', fontSize: '1rem', margin: '0 0 1.5rem' }}>{user?.email}</p>
-            
-            <div style={{ display: 'flex', gap: '0.75rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 1rem', background: '#eff6ff', color: '#2563eb', borderRadius: '999px', fontSize: '0.875rem', fontWeight: 600 }}>
-                <MapPin size={14} /> {communityLabel}
+          <div style={{ flex: 1, minWidth: '260px' }}>
+            <p style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
+              {isOwnProfile ? 'Tu perfil' : 'Perfil público'}
+            </p>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#0f172a', margin: '0 0 0.45rem', letterSpacing: '-0.02em' }}>{profileDisplayName}</h1>
+            <p style={{ color: '#64748b', fontSize: '1rem', margin: '0 0 1rem' }}>@{profileUsername} · {profileEmail}</p>
+
+            <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', background: '#eff6ff', color: '#2563eb', borderRadius: '999px', fontSize: '0.84rem', fontWeight: 600 }}>
+                <MapPin size={14} /> {profileCommunity}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.4rem 1rem', background: '#f8fafc', color: '#64748b', borderRadius: '999px', fontSize: '0.875rem', fontWeight: 600 }}>
-                <Shield size={14} /> Miembro Base
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', background: '#f8fafc', color: '#64748b', borderRadius: '999px', fontSize: '0.84rem', fontWeight: 600 }}>
+                <Shield size={14} /> {profile?.role === 'admin' ? 'Administrador' : 'Miembro'}
               </div>
             </div>
           </div>
         </article>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem' }}>
-          
-          <section style={{ background: '#fff', borderRadius: '2rem', padding: '2rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <TrendingUp size={20} color="#3b82f6" /> Tu Impacto
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
+          <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+            <h3 style={{ margin: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '1rem', color: '#0f172a' }}>
+              <TrendingUp size={16} color="#3b82f6" /> Actividad
             </h3>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '1.5rem', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>FOTOS</span>
-                <strong style={{ fontSize: '1.5rem', color: '#0f172a' }}>{activity.uploaded}</strong>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.6rem' }}>
+              <div style={{ background: '#f8fafc', borderRadius: '0.8rem', padding: '0.8rem' }}>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>FOTOS</span>
+                <strong style={{ fontSize: '1.3rem', color: '#0f172a' }}>{activity.uploaded}</strong>
               </div>
-              <div style={{ padding: '1.5rem', background: '#f8fafc', borderRadius: '1.5rem', textAlign: 'center' }}>
-                <span style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600, display: 'block', marginBottom: '0.5rem' }}>VOTOS</span>
-                <strong style={{ fontSize: '1.5rem', color: '#0f172a' }}>{activity.votesReceived}</strong>
+              <div style={{ background: '#f8fafc', borderRadius: '0.8rem', padding: '0.8rem' }}>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>SIGUIENDO</span>
+                <strong style={{ fontSize: '1.3rem', color: '#0f172a' }}>{followStats.following}</strong>
               </div>
-            </div>
-            
-            <div style={{ marginTop: '1.5rem', padding: '1.25rem', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', borderRadius: '1.5rem', color: '#fff' }}>
-              <p style={{ fontSize: '0.875rem', opacity: 0.9, marginBottom: '0.25rem' }}>Media de Votos</p>
-              <strong style={{ fontSize: '1.75rem' }}>{formatVotesAverage(activity.averageVotes)}</strong>
-              <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Calendar size={12} /> Última: {formatDate(activity.lastPublishedAt)}
+              <div style={{ background: '#f8fafc', borderRadius: '0.8rem', padding: '0.8rem' }}>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>SEGUIDORES</span>
+                <strong style={{ fontSize: '1.3rem', color: '#0f172a' }}>{followStats.followers}</strong>
+              </div>
+              <div style={{ background: '#f8fafc', borderRadius: '0.8rem', padding: '0.8rem' }}>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>ALTA</span>
+                <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>{formatDate(profile?.created_at)}</strong>
               </div>
             </div>
           </section>
 
-          <section style={{ background: '#fff', borderRadius: '2rem', padding: '2rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '1.5rem' }}>Detalles de Cuenta</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Usuario</span>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>@{profileData?.username || 'usuario'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Correo</span>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a', maxWidth: '55%', textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email || 'Sin correo'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Rol</span>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>{user?.role === 'admin' ? 'Administrador' : 'Miembro'}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Comunidad</span>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>{communityLabel}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '1rem', borderBottom: '1px solid #f1f5f9' }}>
-                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Registrado</span>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>{registeredAt}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '0.875rem', color: '#64748b' }}>Última publicación</span>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#0f172a' }}>{formatDate(activity.lastPublishedAt)}</span>
-              </div>
-            </div>
+          <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+            <h3 style={{ margin: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '1rem', color: '#0f172a' }}>
+              <Calendar size={16} color="#3b82f6" /> Detalles
+            </h3>
+            <p style={{ margin: '0 0 0.45rem', color: '#64748b', fontSize: '0.9rem' }}><strong style={{ color: '#0f172a' }}>Usuario:</strong> @{profileUsername}</p>
+            <p style={{ margin: '0 0 0.45rem', color: '#64748b', fontSize: '0.9rem' }}><strong style={{ color: '#0f172a' }}>Comunidad:</strong> {profileCommunity}</p>
+            <p style={{ margin: '0 0 0.45rem', color: '#64748b', fontSize: '0.9rem' }}><strong style={{ color: '#0f172a' }}>Registrado:</strong> {formatDate(profile?.created_at)}</p>
+            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}><strong style={{ color: '#0f172a' }}>Última foto:</strong> {formatDate(activity.lastPublishedAt)}</p>
           </section>
         </div>
 
-        <section style={{ background: '#fff', borderRadius: '2rem', padding: '2rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
-          <h3 style={{ fontSize: '1.25rem', fontWeight: 800, color: '#0f172a', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <ImageIcon size={20} color="#3b82f6" /> Fotos Subidas
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
+          <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+            <h3 style={{ margin: 0, marginBottom: '1rem', fontSize: '1rem', color: '#0f172a' }}>Seguidores</h3>
+            {followers.length === 0 ? (
+              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>Sin seguidores todavía.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.6rem' }}>
+                {followers.map((item) => (
+                  <Link key={`follower-${item.id}`} to={user ? `/app/users/${item.id}` : `/users/${item.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {item.avatar_url ? <img src={item.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{(item.username || 'u').charAt(0).toUpperCase()}</span>}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>@{item.username}</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.display_name || 'Participante'}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+            <h3 style={{ margin: 0, marginBottom: '1rem', fontSize: '1rem', color: '#0f172a' }}>Siguiendo</h3>
+            {following.length === 0 ? (
+              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>No sigue a nadie todavía.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.6rem' }}>
+                {following.map((item) => (
+                  <Link key={`following-${item.id}`} to={user ? `/app/users/${item.id}` : `/users/${item.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      {item.avatar_url ? <img src={item.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{(item.username || 'u').charAt(0).toUpperCase()}</span>}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>@{item.username}</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.display_name || 'Participante'}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+            <ImageIcon size={18} color="#3b82f6" /> Fotos
           </h3>
-          {loadingPhotos ? (
-            <p style={{ color: '#64748b', margin: 0 }}>Cargando fotos...</p>
+
+          {isLoading ? (
+            <p style={{ color: '#64748b', margin: 0 }}>Cargando perfil...</p>
           ) : userPhotos.length === 0 ? (
-            <p style={{ color: '#64748b', margin: 0 }}>Aún no has subido fotografías.</p>
+            <p style={{ color: '#64748b', margin: 0 }}>Este usuario aún no ha subido fotografías.</p>
           ) : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '1rem' }}>
-              {userPhotos.map((photo) => (
-                <Link
-                  key={photo.id}
-                  to={`/app/photos/${photo.id}`}
-                  style={{ textDecoration: 'none', color: 'inherit', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}
-                >
-                  <img
-                    src={photo.image_url}
-                    alt={photo.title || 'Fotografía'}
-                    style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }}
-                  />
-                  <div style={{ padding: '0.75rem' }}>
-                    <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {photo.title || 'Sin título'}
-                    </p>
-                    <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: '#64748b' }}>
-                      {formatDate(photo.created_at)}
-                    </p>
-                  </div>
-                </Link>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '0.85rem' }}>
+              {userPhotos.map((photo) => {
+                const photoPath = user ? `/app/photos/${photo.id}` : `/photos/${photo.id}`;
+                return (
+                  <Link key={photo.id} to={photoPath} style={{ textDecoration: 'none', color: 'inherit', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                    <img src={photo.image_url} alt={photo.title || 'Fotografía'} style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }} />
+                    <div style={{ padding: '0.75rem' }}>
+                      <p style={{ margin: 0, fontSize: '0.86rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {photo.title || 'Sin título'}
+                      </p>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.74rem', color: '#64748b' }}>
+                        {formatDate(photo.created_at)}
+                      </p>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </section>

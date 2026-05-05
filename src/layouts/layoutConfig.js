@@ -12,6 +12,7 @@ function buildFooterSections({ isAuthenticated, isAdmin }) {
       links: isAuthenticated
         ? [
             { to: '/app/profile', label: 'Perfil' },
+            { to: '/app/chat', label: 'Chat' },
             { to: '/app/photos/upload', label: 'Subir foto' },
           ]
         : [
@@ -69,6 +70,7 @@ export function createPrivateLayoutConfig({ user, onLogout }) {
   const navItems = [
     { to: '/app/dashboard', label: 'Galería' },
     { to: '/app/contests', label: 'Concursos' },
+    { to: '/app/chat', label: 'Chat' },
     { to: '/app/photos/upload', label: 'Subir foto' },
     { to: '/app/profile', label: 'Perfil' },
   ];

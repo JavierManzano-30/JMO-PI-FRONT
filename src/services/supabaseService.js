@@ -30,6 +30,19 @@ function isConflictError(error) {
   return error?.status === 409 || code === '23505' || msg.includes('duplicate') || msg.includes('unique');
 }
 
+function isMissingTableError(error, tableName) {
+  const code = String(error?.code || '');
+  const msg = String(error?.message || '').toLowerCase();
+  const normalizedTableName = String(tableName || '').toLowerCase();
+  return (
+    error?.status === 404 ||
+    code === 'PGRST205' ||
+    msg.includes(`'public.${normalizedTableName}'`) ||
+    (msg.includes('schema cache') && msg.includes(normalizedTableName)) ||
+    msg.includes(`relation "${normalizedTableName}" does not exist`)
+  );
+}
+
 async function findBackendUserIdByEmail(email) {
   if (!email) return null;
   const { data, error } = await supabase
@@ -203,10 +216,13 @@ export async function resolveBackendUser(authUser, { createIfMissing = true } = 
  */
 
 export async function signUp(email, password, username, fullName) {
+  const emailRedirectTo = `${window.location.origin}/login`
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
+      emailRedirectTo,
       data: {
         username,
         full_name: fullName
@@ -478,4 +494,383 @@ export async function deleteComment(commentId) {
 
   if (error) throw error;
   return true;
+}
+
+/**
+ * --- SOCIAL: USUARIOS, SEGUIDORES Y CHAT ---
+ */
+
+function sanitizeMessageContent(value) {
+  if (typeof value !== 'string') return '';
+  return value.trim().slice(0, 2000);
+}
+
+export async function getUserById(userId) {
+  const parsedUserId = parseStrictPositiveInt(userId);
+  if (!parsedUserId) return null;
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, email, display_name, avatar_url, role, community_id, created_at')
+    .eq('id', parsedUserId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  const communityName = await findCommunityNameById(data.community_id);
+  return {
+    ...data,
+    community_name: communityName,
+  };
+}
+
+export async function searchUsers(query = '', { excludeUserId = null, limit = 20 } = {}) {
+  const normalizedQuery = String(query || '').trim();
+  const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 20, 1), 50);
+
+  let request = supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, community_id')
+    .order('created_at', { ascending: false })
+    .limit(safeLimit);
+
+  if (normalizedQuery) {
+    request = request.or(
+      `username.ilike.%${normalizedQuery}%,display_name.ilike.%${normalizedQuery}%`
+    );
+  }
+
+  const parsedExclude = parseStrictPositiveInt(excludeUserId);
+  if (parsedExclude) {
+    request = request.neq('id', parsedExclude);
+  }
+
+  const { data, error } = await request;
+  if (error) throw error;
+  return data || [];
+}
+
+export async function followUser(followerId, followingId) {
+  const parsedFollowerId = parseStrictPositiveInt(followerId);
+  const parsedFollowingId = parseStrictPositiveInt(followingId);
+
+  if (!parsedFollowerId || !parsedFollowingId || parsedFollowerId === parsedFollowingId) {
+    return false;
+  }
+
+  const { error } = await supabase
+    .from('user_follows')
+    .upsert(
+      [{ follower_id: parsedFollowerId, following_id: parsedFollowingId }],
+      { onConflict: 'follower_id,following_id', ignoreDuplicates: true }
+    );
+
+  if (error) {
+    if (isMissingTableError(error, 'user_follows')) {
+      throw new Error('La funcionalidad de seguidores no está activada en la base de datos.');
+    }
+    throw error;
+  }
+  return true;
+}
+
+export async function unfollowUser(followerId, followingId) {
+  const parsedFollowerId = parseStrictPositiveInt(followerId);
+  const parsedFollowingId = parseStrictPositiveInt(followingId);
+
+  if (!parsedFollowerId || !parsedFollowingId || parsedFollowerId === parsedFollowingId) {
+    return false;
+  }
+
+  const { error } = await supabase
+    .from('user_follows')
+    .delete()
+    .eq('follower_id', parsedFollowerId)
+    .eq('following_id', parsedFollowingId);
+
+  if (error) {
+    if (isMissingTableError(error, 'user_follows')) {
+      throw new Error('La funcionalidad de seguidores no está activada en la base de datos.');
+    }
+    throw error;
+  }
+  return true;
+}
+
+export async function isFollowingUser(followerId, followingId) {
+  const parsedFollowerId = parseStrictPositiveInt(followerId);
+  const parsedFollowingId = parseStrictPositiveInt(followingId);
+
+  if (!parsedFollowerId || !parsedFollowingId || parsedFollowerId === parsedFollowingId) {
+    return false;
+  }
+
+  const { data, error } = await supabase
+    .from('user_follows')
+    .select('id')
+    .eq('follower_id', parsedFollowerId)
+    .eq('following_id', parsedFollowingId)
+    .maybeSingle();
+
+  if (error) {
+    if (isMissingTableError(error, 'user_follows')) {
+      return false;
+    }
+    throw error;
+  }
+  return Boolean(data?.id);
+}
+
+export async function getFollowStats(userId) {
+  const parsedUserId = parseStrictPositiveInt(userId);
+  if (!parsedUserId) {
+    return { followers: 0, following: 0 };
+  }
+
+  const [{ count: followersCount, error: followersError }, { count: followingCount, error: followingError }] =
+    await Promise.all([
+      supabase
+        .from('user_follows')
+        .select('id', { count: 'exact', head: true })
+        .eq('following_id', parsedUserId),
+      supabase
+        .from('user_follows')
+        .select('id', { count: 'exact', head: true })
+        .eq('follower_id', parsedUserId),
+    ]);
+
+  if (followersError || followingError) {
+    const missingFollowersTable = isMissingTableError(followersError, 'user_follows');
+    const missingFollowingTable = isMissingTableError(followingError, 'user_follows');
+    if (missingFollowersTable || missingFollowingTable) {
+      return { followers: 0, following: 0 };
+    }
+    if (followersError) throw followersError;
+    if (followingError) throw followingError;
+  }
+
+  return {
+    followers: Number(followersCount || 0),
+    following: Number(followingCount || 0),
+  };
+}
+
+async function mapUsersByIds(userIds) {
+  const uniqueUserIds = [...new Set((userIds || []).map((id) => parseStrictPositiveInt(id)).filter(Boolean))];
+  if (uniqueUserIds.length === 0) return new Map();
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, username, display_name, avatar_url, community_id')
+    .in('id', uniqueUserIds);
+
+  if (error) throw error;
+
+  return new Map((data || []).map((row) => [row.id, row]));
+}
+
+export async function getFollowers(userId, { limit = 40 } = {}) {
+  const parsedUserId = parseStrictPositiveInt(userId);
+  if (!parsedUserId) return [];
+
+  const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 40, 1), 100);
+  const { data, error } = await supabase
+    .from('user_follows')
+    .select('follower_id, created_at')
+    .eq('following_id', parsedUserId)
+    .order('created_at', { ascending: false })
+    .limit(safeLimit);
+
+  if (error) {
+    if (isMissingTableError(error, 'user_follows')) {
+      return [];
+    }
+    throw error;
+  }
+  if (!data?.length) return [];
+
+  const usersMap = await mapUsersByIds(data.map((row) => row.follower_id));
+  return data
+    .map((row) => {
+      const profile = usersMap.get(row.follower_id);
+      return profile ? { ...profile, followed_at: row.created_at } : null;
+    })
+    .filter(Boolean);
+}
+
+export async function getFollowing(userId, { limit = 40 } = {}) {
+  const parsedUserId = parseStrictPositiveInt(userId);
+  if (!parsedUserId) return [];
+
+  const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 40, 1), 100);
+  const { data, error } = await supabase
+    .from('user_follows')
+    .select('following_id, created_at')
+    .eq('follower_id', parsedUserId)
+    .order('created_at', { ascending: false })
+    .limit(safeLimit);
+
+  if (error) {
+    if (isMissingTableError(error, 'user_follows')) {
+      return [];
+    }
+    throw error;
+  }
+  if (!data?.length) return [];
+
+  const usersMap = await mapUsersByIds(data.map((row) => row.following_id));
+  return data
+    .map((row) => {
+      const profile = usersMap.get(row.following_id);
+      return profile ? { ...profile, followed_at: row.created_at } : null;
+    })
+    .filter(Boolean);
+}
+
+export async function sendDirectMessage(senderId, receiverId, content) {
+  const parsedSenderId = parseStrictPositiveInt(senderId);
+  const parsedReceiverId = parseStrictPositiveInt(receiverId);
+  const normalizedContent = sanitizeMessageContent(content);
+
+  if (!parsedSenderId || !parsedReceiverId || parsedSenderId === parsedReceiverId || !normalizedContent) {
+    throw new Error('Mensaje inválido');
+  }
+
+  const { data, error } = await supabase
+    .from('direct_messages')
+    .insert([{ sender_id: parsedSenderId, receiver_id: parsedReceiverId, content: normalizedContent }])
+    .select('id, sender_id, receiver_id, content, created_at')
+    .single();
+
+  if (error) {
+    if (isMissingTableError(error, 'direct_messages')) {
+      throw new Error('El chat no está activado en la base de datos.');
+    }
+    throw error;
+  }
+  return data;
+}
+
+export async function getConversationMessages(currentUserId, otherUserId, { limit = 100 } = {}) {
+  const parsedCurrentUserId = parseStrictPositiveInt(currentUserId);
+  const parsedOtherUserId = parseStrictPositiveInt(otherUserId);
+  if (!parsedCurrentUserId || !parsedOtherUserId) return [];
+
+  const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 100, 1), 300);
+  const filters =
+    `and(sender_id.eq.${parsedCurrentUserId},receiver_id.eq.${parsedOtherUserId}),` +
+    `and(sender_id.eq.${parsedOtherUserId},receiver_id.eq.${parsedCurrentUserId})`;
+
+  const { data, error } = await supabase
+    .from('direct_messages')
+    .select('id, sender_id, receiver_id, content, created_at')
+    .or(filters)
+    // Traemos primero los más recientes y luego reordenamos en cliente para mostrar cronológico.
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(safeLimit);
+
+  if (error) {
+    if (isMissingTableError(error, 'direct_messages')) {
+      return [];
+    }
+    throw error;
+  }
+
+  return (data || []).slice().reverse();
+}
+
+export async function getChatContacts(currentUserId, { limit = 60 } = {}) {
+  const parsedCurrentUserId = parseStrictPositiveInt(currentUserId);
+  if (!parsedCurrentUserId) return [];
+
+  const safeLimit = Math.min(Math.max(Number.parseInt(limit, 10) || 60, 1), 150);
+  const { data: messages, error: messagesError } = await supabase
+    .from('direct_messages')
+    .select('sender_id, receiver_id, created_at')
+    .or(`sender_id.eq.${parsedCurrentUserId},receiver_id.eq.${parsedCurrentUserId}`)
+    .order('created_at', { ascending: false })
+    .limit(600);
+
+  if (messagesError) {
+    if (isMissingTableError(messagesError, 'direct_messages')) {
+      return [];
+    }
+    throw messagesError;
+  }
+
+  const lastInteractionByUser = new Map();
+  for (const message of messages || []) {
+    const otherUserId = message.sender_id === parsedCurrentUserId ? message.receiver_id : message.sender_id;
+    if (!parseStrictPositiveInt(otherUserId)) continue;
+    const known = lastInteractionByUser.get(otherUserId);
+    const candidate = message.created_at || null;
+    if (!known || (candidate && known < candidate)) {
+      lastInteractionByUser.set(otherUserId, candidate);
+    }
+  }
+
+  const following = await getFollowing(parsedCurrentUserId, { limit: 120 });
+  for (const profile of following) {
+    if (!lastInteractionByUser.has(profile.id)) {
+      lastInteractionByUser.set(profile.id, null);
+    }
+  }
+
+  const userIds = [...lastInteractionByUser.keys()].slice(0, safeLimit);
+  if (userIds.length === 0) return [];
+
+  const usersMap = await mapUsersByIds(userIds);
+  const contacts = userIds
+    .map((id) => {
+      const profile = usersMap.get(id);
+      if (!profile) return null;
+      return {
+        ...profile,
+        last_interaction_at: lastInteractionByUser.get(id),
+      };
+    })
+    .filter(Boolean);
+
+  contacts.sort((a, b) => {
+    const at = a.last_interaction_at ? new Date(a.last_interaction_at).getTime() : 0;
+    const bt = b.last_interaction_at ? new Date(b.last_interaction_at).getTime() : 0;
+    return bt - at;
+  });
+
+  return contacts;
+}
+
+export function subscribeToConversation(currentUserId, otherUserId, onMessage) {
+  const parsedCurrentUserId = parseStrictPositiveInt(currentUserId);
+  const parsedOtherUserId = parseStrictPositiveInt(otherUserId);
+  if (!parsedCurrentUserId || !parsedOtherUserId || typeof onMessage !== 'function') {
+    return () => {};
+  }
+
+  const channelName = `dm:${parsedCurrentUserId}:${parsedOtherUserId}:${Date.now()}`;
+  const channel = supabase
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'direct_messages' },
+      (payload) => {
+        const message = payload?.new;
+        if (!message) return;
+
+        const senderId = parseStrictPositiveInt(message.sender_id);
+        const receiverId = parseStrictPositiveInt(message.receiver_id);
+        const matchA = senderId === parsedCurrentUserId && receiverId === parsedOtherUserId;
+        const matchB = senderId === parsedOtherUserId && receiverId === parsedCurrentUserId;
+        if (matchA || matchB) {
+          onMessage(message);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
 }

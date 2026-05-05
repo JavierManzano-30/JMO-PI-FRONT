@@ -17,6 +17,7 @@ const UploadPhoto = lazy(() => import('./pages/UploadPhoto.jsx').then((m) => ({ 
 const UploadSuccess = lazy(() => import('./pages/UploadSuccess.jsx').then((m) => ({ default: m.UploadSuccess })));
 const Profile = lazy(() => import('./pages/Profile.jsx').then((m) => ({ default: m.Profile })));
 const ProfileEdit = lazy(() => import('./pages/ProfileEdit.jsx').then((m) => ({ default: m.ProfileEdit })));
+const Chat = lazy(() => import('./pages/Chat.jsx').then((m) => ({ default: m.Chat })));
 const Forbidden = lazy(() => import('./pages/Forbidden.jsx').then((m) => ({ default: m.Forbidden })));
 const NotFound = lazy(() => import('./pages/NotFound.jsx').then((m) => ({ default: m.NotFound })));
 const Winners = lazy(() => import('./pages/Winners.jsx').then((m) => ({ default: m.Winners })));
@@ -79,6 +80,7 @@ export function App() {
               <Route path="/cookie-policy" element={<CookiePolicy />} />
               <Route path="/gallery" element={<Dashboard />} />
               <Route path="/photos/:photoId" element={<PhotoDetail />} />
+              <Route path="/users/:userId" element={<Profile />} />
             </Route>
             <Route
               path="/app"
@@ -98,7 +100,9 @@ export function App() {
               <Route path="contests/:themeId" element={<ContestDetail />} />
               <Route path="winners" element={<Navigate to="../contests" replace />} />
               <Route path="profile" element={<Profile />} />
+              <Route path="users/:userId" element={<Profile />} />
               <Route path="profile/edit" element={<ProfileEdit />} />
+              <Route path="chat" element={<Chat />} />
               <Route
                 path="admin"
                 element={(

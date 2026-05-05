@@ -5,7 +5,8 @@ import { useAuth } from '../hooks/useAuth';
 import { 
   getContests, 
   getCategories, 
-  getSubmissions 
+  getSubmissions,
+  getFollowing
 } from '../services/supabaseService';
 import { 
   Heart,
@@ -146,6 +147,7 @@ export function Dashboard() {
   const [submissions, setSubmissions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState(null);
+  const [feedMode, setFeedMode] = useState(() => (params.get('feed') === 'following' ? 'following' : 'all'));
   const rawBackendUserId = user?.backendId ?? user?.id;
   const backendUserId = typeof rawBackendUserId === 'number'
     ? (Number.isInteger(rawBackendUserId) && rawBackendUserId > 0 ? rawBackendUserId : null)
@@ -164,17 +166,40 @@ export function Dashboard() {
     categoryId: params.get('category') || '',
   };
 
+  const updateFeedMode = (nextMode) => {
+    const normalized = nextMode === 'following' ? 'following' : 'all';
+    if (normalized === 'following' && !user) {
+      setToastMsg('Inicia sesión para ver las fotos de usuarios seguidos.');
+      setTimeout(() => setToastMsg(null), 3000);
+      return;
+    }
+
+    setFeedMode(normalized);
+    const nextParams = new URLSearchParams(params);
+    if (normalized === 'following') nextParams.set('feed', 'following');
+    else nextParams.delete('feed');
+    setParams(nextParams, { replace: true });
+  };
+
   const loadSubmissions = useCallback(async () => {
     setLoading(true);
     try {
       const data = await getSubmissions(activeFilters, backendUserId);
-      setSubmissions(data || []);
+      let nextSubmissions = data || [];
+
+      if (feedMode === 'following' && backendUserId) {
+        const following = await getFollowing(backendUserId, { limit: 250 });
+        const followingIds = new Set((following || []).map((profile) => profile.id).filter(Boolean));
+        nextSubmissions = nextSubmissions.filter((item) => followingIds.has(item.user_id));
+      }
+
+      setSubmissions(nextSubmissions);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
-  }, [params, backendUserId]);
+  }, [backendUserId, feedMode, params]);
 
   useEffect(() => {
     loadSubmissions();
@@ -268,7 +293,65 @@ export function Dashboard() {
         .heart-active { color: #ef4444 !important; background: #fee2e2 !important; }
       `}</style>
 
-      <main style={s.gallery}>
+      <div
+        style={{
+          maxWidth: '1280px',
+          margin: '1rem auto 0',
+          padding: '0 2rem',
+          display: 'flex',
+          justifyContent: 'center',
+        }}
+      >
+        <div
+          style={{
+            width: 'fit-content',
+            zIndex: 50,
+            background: 'rgba(255,255,255,0.94)',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid #dbe4f0',
+            borderRadius: '999px',
+            padding: '0.35rem',
+            display: 'flex',
+            gap: '0.35rem',
+            boxShadow: '0 10px 30px rgba(15, 23, 42, 0.12)',
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => updateFeedMode('following')}
+            style={{
+              border: 'none',
+              borderRadius: '999px',
+              padding: '0.55rem 1rem',
+              fontWeight: 800,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              background: feedMode === 'following' ? '#2563eb' : 'transparent',
+              color: feedMode === 'following' ? '#fff' : '#334155',
+            }}
+          >
+            Seguidos
+          </button>
+          <button
+            type="button"
+            onClick={() => updateFeedMode('all')}
+            style={{
+              border: 'none',
+              borderRadius: '999px',
+              padding: '0.55rem 1rem',
+              fontWeight: 800,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              background: feedMode === 'all' ? '#2563eb' : 'transparent',
+              color: feedMode === 'all' ? '#fff' : '#334155',
+            }}
+          >
+            Todos
+          </button>
+        </div>
+      </div>
+
+      <main style={{ ...s.gallery, paddingTop: '1.25rem' }}>
         {loading ? (
           <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '10rem', color: tokens.colors.textMuted, fontWeight: 600 }}>Cargando Feed...</div>
         ) : submissions.length === 0 ? (
@@ -294,7 +377,16 @@ export function Dashboard() {
                   ) : (
                     <div style={s.avatar}>{getAuthorName(item).charAt(0).toUpperCase()}</div>
                   )}
-                  <div style={{ overflow: 'hidden' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      const profilePath = user ? `/app/users/${item.user_id}` : `/users/${item.user_id}`;
+                      navigate(profilePath);
+                    }}
+                    style={{ overflow: 'hidden', border: 'none', background: 'transparent', padding: 0, textAlign: 'left', cursor: 'pointer' }}
+                  >
                     <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       @{getAuthorName(item)}
                     </p>
@@ -306,7 +398,7 @@ export function Dashboard() {
                       <span style={{ opacity: 0.3 }}>•</span>
                       <span style={{ color: tokens.colors.textMuted }}>{item.categories?.name || 'Sin Cat.'}</span>
                     </div>
-                  </div>
+                  </button>
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
