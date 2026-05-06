@@ -5,7 +5,7 @@ import logoSrc from '../../assets/logo-propio-transparente.png';
 export function Brand({ to }) {
   return (
     <Link to={to} className="brand" aria-label="SnapNation">
-      <img src={logoSrc} alt="SnapNation" height="85" style={{ display: 'block', objectFit: 'contain' }} />
+      <img src={logoSrc} alt="SnapNation" className="brand-logo" />
     </Link>
   );
 }

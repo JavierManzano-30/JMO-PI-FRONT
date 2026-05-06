@@ -34,15 +34,15 @@ export function AppFooter({ sections = [] }) {
   return (
     <footer className="site-footer">
       <div className="site-footer-inner">
-        <div className="footer-block" style={{ gap: '1.25rem' }}>
-          <div className="brand" style={{
+        <div className="footer-block footer-brand-block" style={{ gap: '1.25rem' }}>
+          <div className="brand footer-brand" style={{
             background: 'rgba(255, 255, 255, 0.95)',
             padding: '1rem',
             borderRadius: '16px',
             display: 'inline-block',
             width: 'fit-content'
           }}>
-            <img src={logoSrc} alt="SnapNation" height="85" style={{ display: 'block', objectFit: 'contain' }} />
+            <img src={logoSrc} alt="SnapNation" className="footer-brand-logo" />
           </div>
           <p style={{ maxWidth: '280px', fontSize: '0.875rem' }}>
             La plataforma definitiva para fotógrafos competitivos.

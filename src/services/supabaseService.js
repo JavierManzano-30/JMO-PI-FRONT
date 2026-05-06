@@ -874,3 +874,55 @@ export function subscribeToConversation(currentUserId, otherUserId, onMessage) {
     supabase.removeChannel(channel);
   };
 }
+
+export async function getUnreadDirectMessagesCount(currentUserId, { since = null } = {}) {
+  const parsedCurrentUserId = parseStrictPositiveInt(currentUserId);
+  if (!parsedCurrentUserId) return 0;
+
+  let query = supabase
+    .from('direct_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('receiver_id', parsedCurrentUserId)
+    .neq('sender_id', parsedCurrentUserId);
+
+  if (since) {
+    query = query.gt('created_at', since);
+  }
+
+  const { count, error } = await query;
+  if (error) {
+    if (isMissingTableError(error, 'direct_messages')) return 0;
+    throw error;
+  }
+  return Number(count || 0);
+}
+
+export function subscribeToIncomingDirectMessages(currentUserId, onMessage) {
+  const parsedCurrentUserId = parseStrictPositiveInt(currentUserId);
+  if (!parsedCurrentUserId || typeof onMessage !== 'function') {
+    return () => {};
+  }
+
+  const channelName = `dm:incoming:${parsedCurrentUserId}:${Date.now()}`;
+  const channel = supabase
+    .channel(channelName)
+    .on(
+      'postgres_changes',
+      { event: 'INSERT', schema: 'public', table: 'direct_messages' },
+      (payload) => {
+        const message = payload?.new;
+        if (!message) return;
+
+        const senderId = parseStrictPositiveInt(message.sender_id);
+        const receiverId = parseStrictPositiveInt(message.receiver_id);
+        if (receiverId === parsedCurrentUserId && senderId !== parsedCurrentUserId) {
+          onMessage(message);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}

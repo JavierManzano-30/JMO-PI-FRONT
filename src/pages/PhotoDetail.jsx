@@ -294,26 +294,111 @@ export function PhotoDetail() {
 
   return (
     <div style={s.page}>
-      <Link to={backTo} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: tokens.colors.textMuted, textDecoration: 'none', fontWeight: 600 }}>
+      <style>{`
+        .photo-detail-shell {
+          padding: 0.75rem 0 1.5rem;
+        }
+        .photo-detail-back {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          color: ${tokens.colors.textMuted};
+          text-decoration: none;
+          font-weight: 600;
+        }
+        .photo-detail-main-grid {
+          max-width: 1200px;
+          margin: 2rem auto 0;
+          display: grid;
+          grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr);
+          gap: 3rem;
+          align-items: start;
+        }
+        .photo-detail-image-box {
+          position: sticky;
+          top: 8rem;
+          max-height: calc(100vh - 12rem);
+        }
+        .photo-detail-title {
+          word-break: break-word;
+          overflow-wrap: anywhere;
+        }
+        .photo-detail-description {
+          font-size: 1.25rem;
+          color: ${tokens.colors.textMuted};
+          line-height: 1.6;
+          overflow-wrap: anywhere;
+        }
+
+        @media (max-width: 1024px) {
+          .photo-detail-main-grid {
+            gap: 1.4rem;
+            grid-template-columns: 1fr;
+            margin-top: 1rem;
+          }
+          .photo-detail-image-box {
+            position: static;
+            top: auto;
+            max-height: none;
+            max-width: 760px;
+            margin: 0 auto;
+            width: 100%;
+          }
+          .photo-detail-content {
+            padding: 0 !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .photo-detail-shell {
+            padding: 0.25rem 0 1rem;
+          }
+          .photo-detail-main-grid {
+            gap: 1rem;
+          }
+          .photo-detail-title {
+            font-size: 2rem !important;
+            line-height: 1.12 !important;
+          }
+          .photo-detail-description {
+            font-size: 1.02rem !important;
+            line-height: 1.5 !important;
+          }
+          .photo-detail-meta-grid {
+            grid-template-columns: 1fr !important;
+            gap: 0.85rem !important;
+            padding: 1rem !important;
+          }
+          .photo-detail-action-box {
+            flex-direction: column;
+            gap: 0.7rem;
+          }
+          .photo-detail-action-box > * {
+            width: 100%;
+          }
+        }
+      `}</style>
+      <div className="photo-detail-shell">
+      <Link to={backTo} className="photo-detail-back">
         <ArrowLeft size={18} /> Volver a la galería
       </Link>
 
-      <main style={s.container}>
+      <main className="photo-detail-main-grid">
         {/* Lado Izquierdo: Imagen */}
-        <div style={s.imageBox}>
+        <div className="photo-detail-image-box" style={s.imageBox}>
           <img src={photo.image_url} alt={photo.title} style={s.image} />
         </div>
 
         {/* Lado Derecho: Info */}
-        <div style={s.content}>
+        <div className="photo-detail-content" style={s.content}>
           <div style={s.badge}>
             <Trophy size={14} /> {photo.contests?.title || 'Concurso Finalizado'}
           </div>
           
-          <h1 style={s.title}>{photo.title}</h1>
-          <p style={{ fontSize: '1.25rem', color: tokens.colors.textMuted, lineHeight: 1.6 }}>{photo.description || 'Sin descripción disponible.'}</p>
+          <h1 className="photo-detail-title" style={s.title}>{photo.title}</h1>
+          <p className="photo-detail-description">{photo.description || 'Sin descripción disponible.'}</p>
 
-          <div style={s.metaGrid}>
+          <div className="photo-detail-meta-grid" style={s.metaGrid}>
             <div>
               <p style={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.colors.textMuted, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Autor</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
@@ -340,7 +425,7 @@ export function PhotoDetail() {
             </div>
           </div>
 
-          <div style={s.actionBox}>
+          <div className="photo-detail-action-box" style={s.actionBox}>
             <div style={{ position: 'relative', flex: 1 }}>
               <button 
                 onClick={handleToggleVote}
@@ -471,6 +556,7 @@ export function PhotoDetail() {
           </section>
         </div>
       </main>
+      </div>
     </div>
   );
 }

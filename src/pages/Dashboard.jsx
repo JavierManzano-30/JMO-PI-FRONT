@@ -67,13 +67,14 @@ const s = {
   },
   gallery: {
     display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
+    gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))',
     gridAutoRows: '480px',
     gridAutoFlow: 'dense',
     gap: '1.5rem',
     padding: '2rem',
-    maxWidth: '1280px',
-    margin: '0 auto',
+    width: '100%',
+    maxWidth: 'none',
+    margin: 0,
   },
   postCard: {
     background: tokens.colors.white,
@@ -110,6 +111,8 @@ const s = {
     alignItems: 'center',
     gap: '0.75rem',
     overflow: 'hidden',
+    flex: 1,
+    minWidth: 0,
   },
   avatar: {
     width: '40px',
@@ -249,6 +252,13 @@ export function Dashboard() {
     return item.profiles.username || item.profiles.full_name || 'Participante';
   };
 
+  const goToAuthorProfile = (event, userId) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const profilePath = user ? `/app/users/${userId}` : `/users/${userId}`;
+    navigate(profilePath);
+  };
+
   const getOptimizedUrl = (url) => {
     if (!url) return '';
     // Transformaciones ultra rápidas para Cloudinary (baja calidad, autoformato, ancho max 800px)
@@ -291,13 +301,42 @@ export function Dashboard() {
         .comment-btn:hover { background: #dcfce7 !important; color: #059669 !important; }
         .vote-active { color: ${tokens.colors.accent} !important; background: #dbeafe !important; }
         .heart-active { color: #ef4444 !important; background: #fee2e2 !important; }
+        @media (max-width: 1100px) {
+          .gallery-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            grid-auto-rows: 420px !important;
+            gap: 1rem !important;
+            padding: 1.2rem !important;
+          }
+          .gallery-grid .vibe-card {
+            grid-column: span 1 !important;
+          }
+        }
+        @media (max-width: 760px) {
+          .gallery-feed-toggle-wrap {
+            padding: 0 1rem !important;
+            margin-top: 0.8rem !important;
+          }
+          .gallery-grid {
+            grid-template-columns: 1fr !important;
+            grid-auto-rows: 360px !important;
+            gap: 0.9rem !important;
+            padding: 1rem !important;
+          }
+          .gallery-grid .vibe-card {
+            border-radius: 18px !important;
+            grid-column: span 1 !important;
+          }
+        }
       `}</style>
 
       <div
+        className="gallery-feed-toggle-wrap"
         style={{
-          maxWidth: '1280px',
-          margin: '1rem auto 0',
-          padding: '0 2rem',
+          width: '100%',
+          maxWidth: 'none',
+          margin: 0,
+          padding: '0.75rem 2rem 0',
           display: 'flex',
           justifyContent: 'center',
         }}
@@ -351,7 +390,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <main style={{ ...s.gallery, paddingTop: '1.25rem' }}>
+      <main className="gallery-grid" style={{ ...s.gallery, paddingTop: '0.75rem', margin: 0 }}>
         {loading ? (
           <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '10rem', color: tokens.colors.textMuted, fontWeight: 600 }}>Cargando Feed...</div>
         ) : submissions.length === 0 ? (
@@ -372,20 +411,32 @@ export function Dashboard() {
 
               <div style={s.footer}>
                 <div style={s.author}>
-                  {item.profiles?.avatar_url ? (
-                    <img src={getOptimizedAvatar(item.profiles.avatar_url)} style={s.avatar} alt="avatar" loading="lazy" decoding="async" />
-                  ) : (
-                    <div style={s.avatar}>{getAuthorName(item).charAt(0).toUpperCase()}</div>
-                  )}
                   <button
                     type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      const profilePath = user ? `/app/users/${item.user_id}` : `/users/${item.user_id}`;
-                      navigate(profilePath);
+                    onClick={(e) => goToAuthorProfile(e, item.user_id)}
+                    style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', flexShrink: 0 }}
+                    aria-label={`Ver perfil de @${getAuthorName(item)}`}
+                  >
+                    {item.profiles?.avatar_url ? (
+                      <img src={getOptimizedAvatar(item.profiles.avatar_url)} style={s.avatar} alt="avatar" loading="lazy" decoding="async" />
+                    ) : (
+                      <div style={s.avatar}>{getAuthorName(item).charAt(0).toUpperCase()}</div>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => goToAuthorProfile(e, item.user_id)}
+                    style={{
+                      overflow: 'hidden',
+                      border: 'none',
+                      background: 'transparent',
+                      padding: 0,
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      flex: 1,
+                      minWidth: 0,
+                      maxWidth: '100%',
                     }}
-                    style={{ overflow: 'hidden', border: 'none', background: 'transparent', padding: 0, textAlign: 'left', cursor: 'pointer' }}
                   >
                     <p style={{ fontSize: '0.875rem', fontWeight: 800, margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       @{getAuthorName(item)}

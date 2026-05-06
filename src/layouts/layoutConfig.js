@@ -66,11 +66,12 @@ export function createPublicLayoutConfig() {
 
 export function createPrivateLayoutConfig({ user, onLogout }) {
   const isAdmin = user?.role === 'admin';
+  const unreadChatCount = Number.isInteger(user?.unreadChatCount) ? user.unreadChatCount : 0;
 
   const navItems = [
     { to: '/app/dashboard', label: 'Galería' },
     { to: '/app/contests', label: 'Concursos' },
-    { to: '/app/chat', label: 'Chat' },
+    { to: '/app/chat', label: 'Chat', badgeCount: unreadChatCount },
     { to: '/app/photos/upload', label: 'Subir foto' },
     { to: '/app/profile', label: 'Perfil' },
   ];

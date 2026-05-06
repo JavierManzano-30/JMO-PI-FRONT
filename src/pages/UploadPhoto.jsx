@@ -23,6 +23,8 @@ import {
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const MAX_TITLE_LENGTH = 80;
+const MAX_DESCRIPTION_LENGTH = 500;
 
 const s = {
   container: {
@@ -252,7 +254,7 @@ export function UploadPhoto() {
   };
 
   return (
-    <div style={s.container}>
+    <div className="upload-container" style={s.container}>
       <style>{`
         .upload-input:focus { border-color: #3b82f6 !important; }
         .upload-submit:hover { background: #1d4ed8 !important; transform: translateY(-2px); }
@@ -260,11 +262,103 @@ export function UploadPhoto() {
         .back-link:hover { color: #2563eb !important; }
         .dropzone-overlay { opacity: 0; transition: opacity 0.2s; }
         .dropzone-container:hover .dropzone-overlay { opacity: 1; }
+
+        .upload-shell {
+          width: 100%;
+          max-width: 64rem;
+        }
+
+        .upload-card {
+          width: 100%;
+        }
+
+        .upload-form-section-grid {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 1rem;
+        }
+
+        .upload-side-card {
+          display: flex;
+          flex-direction: column;
+          gap: 1.5rem;
+          background: #fff;
+          padding: 1.5rem;
+          border-radius: 1.25rem;
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 8px 20px -12px rgba(15, 23, 42, 0.22);
+        }
+
+        .upload-preview-title {
+          margin: 0.25rem 0;
+          font-size: 1.125rem;
+          font-weight: 800;
+          color: #0f172a;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        @media (max-width: 980px) {
+          .upload-shell {
+            max-width: 100%;
+          }
+
+          .upload-card {
+            flex-direction: column;
+          }
+
+          .upload-form-pane {
+            border-right: none !important;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 2rem 1.25rem !important;
+          }
+
+          .upload-preview-pane {
+            width: 100% !important;
+            padding: 1.5rem 1.25rem !important;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .upload-container {
+            padding: 0.75rem !important;
+          }
+
+          .upload-card {
+            border-radius: 1.1rem !important;
+          }
+
+          .upload-form-pane {
+            padding: 1.15rem !important;
+          }
+
+          .upload-preview-pane {
+            padding: 1rem !important;
+            gap: 0.8rem !important;
+          }
+
+          .upload-form-section-grid {
+            grid-template-columns: 1fr;
+            gap: 0.9rem;
+          }
+
+          .upload-side-card {
+            padding: 1rem;
+            gap: 0.9rem;
+            border-radius: 1rem;
+          }
+
+          .upload-title {
+            font-size: 1.7rem !important;
+          }
+        }
       `}</style>
       
-      <div style={s.card}>
+      <div className="upload-shell">
+      <div className="upload-card" style={s.card}>
         {/* Formulario Izquierda */}
-        <div style={s.formSection}>
+        <div className="upload-form-pane" style={s.formSection}>
           <header style={s.header}>
             <Link to="/app/dashboard" className="back-link" style={{ 
               display: 'flex', alignItems: 'center', gap: '0.5rem', 
@@ -272,7 +366,7 @@ export function UploadPhoto() {
             }}>
               <ArrowLeft size={16} /> Volver al panel
             </Link>
-            <h1 style={s.title}>Publicar Obra</h1>
+            <h1 className="upload-title" style={s.title}>Publicar Obra</h1>
             <p style={s.subtitle}>Configura los detalles de tu participación.</p>
           </header>
 
@@ -286,9 +380,11 @@ export function UploadPhoto() {
                 style={s.input} 
                 placeholder="Ej. Luces de mi ciudad"
                 value={formData.title}
-                onChange={e => setFormData(p => ({ ...p, title: e.target.value }))}
+                onChange={e => setFormData(p => ({ ...p, title: e.target.value.slice(0, MAX_TITLE_LENGTH) }))}
+                maxLength={MAX_TITLE_LENGTH}
                 required
               />
+              <span style={{ fontSize: '0.74rem', color: '#94a3b8', textAlign: 'right' }}>{formData.title.length}/{MAX_TITLE_LENGTH}</span>
             </div>
 
             <div style={s.inputGroup}>
@@ -298,12 +394,14 @@ export function UploadPhoto() {
                 style={{ ...s.input, minHeight: '80px', resize: 'vertical' }} 
                 placeholder="¿Qué te inspiró a tomar esta foto?"
                 value={formData.description}
-                onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
+                onChange={e => setFormData(p => ({ ...p, description: e.target.value.slice(0, MAX_DESCRIPTION_LENGTH) }))}
+                maxLength={MAX_DESCRIPTION_LENGTH}
               />
+              <span style={{ fontSize: '0.74rem', color: '#94a3b8', textAlign: 'right' }}>{formData.description.length}/{MAX_DESCRIPTION_LENGTH}</span>
             </div>
 
             {/* Selectores */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+            <div className="upload-form-section-grid">
               <div style={s.inputGroup}>
                 <label style={s.label}><Trophy size={14} /> Concurso</label>
                 <select style={s.select} value={formData.contestId} onChange={e => setFormData(p => ({ ...p, contestId: e.target.value }))} required>
@@ -365,13 +463,13 @@ export function UploadPhoto() {
         </div>
 
         {/* Resumen Derecha */}
-        <div style={s.previewSection}>
+        <div className="upload-preview-pane" style={s.previewSection}>
           <h2 style={{ ...s.label, color: '#64748b' }}>Ficha de Publicación</h2>
           
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#fff', padding: '1.5rem', borderRadius: '1.25rem', border: '1px solid #e2e8f0' }}>
+          <div className="upload-side-card">
             <div>
               <label style={s.label}>Título</label>
-              <p style={{ fontWeight: 800, color: '#0f172a', margin: '0.25rem 0', fontSize: '1.125rem' }}>{formData.title || '-'}</p>
+              <p className="upload-preview-title">{formData.title || '-'}</p>
             </div>
             <div>
               <label style={s.label}>Concurso</label>
@@ -389,6 +487,7 @@ export function UploadPhoto() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );
