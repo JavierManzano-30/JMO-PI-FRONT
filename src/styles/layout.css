@@ -660,16 +660,17 @@ html[data-theme='dark'] .page:not(.page--plain)::after {
 
   .mobile-menu {
     position: absolute;
-    top: calc(100% + 0.25rem);
+    top: calc(100% + 0.45rem);
     right: 0;
-    width: min(210px, calc(100vw - 0.9rem));
+    width: min(320px, calc(100vw - 1.1rem));
     display: none;
-    padding: 0.3rem;
+    padding: 0.6rem;
     border-radius: 12px;
     border: 1px solid var(--border);
-    background: color-mix(in srgb, var(--surface) 92%, transparent);
-    box-shadow: 0 16px 28px -22px rgba(15, 23, 42, 0.55);
-    z-index: 90;
+    background: var(--surface);
+    box-shadow: 0 24px 40px -22px rgba(15, 23, 42, 0.55);
+    backdrop-filter: blur(10px);
+    z-index: 140;
   }
 
   .mobile-menu.is-open {
@@ -733,8 +734,9 @@ html[data-theme='dark'] .page:not(.page--plain)::after {
     display: flex;
     width: 100%;
     justify-content: flex-start;
-    flex-wrap: wrap;
-    gap: 0.35rem;
+    flex-wrap: nowrap;
+    flex-direction: column;
+    gap: 0.5rem;
     padding-top: 0.35rem;
     margin-top: 0.2rem;
     border-top: 1px solid var(--border);
@@ -745,9 +747,14 @@ html[data-theme='dark'] .page:not(.page--plain)::after {
     width: 100%;
   }
 
-  .mobile-menu .btn.btn-ghost {
+  .mobile-menu .top-actions .btn,
+  .mobile-menu .top-actions .btn.btn-ghost {
     width: 100%;
     justify-content: center;
+  }
+
+  .mobile-menu .role-chip {
+    align-self: flex-start;
   }
 }
 
