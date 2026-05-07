@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getSubmissionById, getComments, addComment, deleteComment } from '../services/supabaseService';
@@ -143,6 +144,7 @@ export function PhotoDetail() {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [lightboxOpen, setLightboxOpen] = useState(false);
   const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
   const rawBackendUserId = user?.backendId ?? user?.id;
   const backendUserId = typeof rawBackendUserId === 'number'
@@ -304,6 +306,7 @@ export function PhotoDetail() {
   const isOwner = backendUserId === photo.user_id;
   const isContestClosed = photo?.contests?.is_active === false;
   const backTo = user ? '/app/dashboard' : '/gallery';
+  const authorProfilePath = photo?.user_id ? (user ? `/app/users/${photo.user_id}` : `/users/${photo.user_id}`) : null;
 
   return (
     <div style={s.page}>
@@ -331,6 +334,75 @@ export function PhotoDetail() {
           position: sticky;
           top: 8rem;
           max-height: calc(100vh - 12rem);
+        }
+        .photo-detail-image-btn {
+          width: 100%;
+          height: 100%;
+          padding: 0;
+          border: none;
+          background: transparent;
+          cursor: zoom-in;
+          display: block;
+        }
+        .photo-detail-lightbox {
+          position: fixed;
+          inset: 0;
+          z-index: 2147483647;
+          background: rgba(2, 6, 23, 0.88);
+          display: grid;
+          place-items: center;
+          padding: 1.25rem;
+        }
+        .photo-detail-lightbox img {
+          max-width: min(96vw, 1600px);
+          max-height: 92vh;
+          width: auto;
+          height: auto;
+          object-fit: contain;
+          border-radius: 0.9rem;
+          box-shadow: 0 28px 70px rgba(0, 0, 0, 0.45);
+        }
+        .photo-detail-lightbox-close {
+          position: fixed;
+          top: 0.95rem;
+          right: 0.95rem;
+          width: 40px;
+          height: 40px;
+          border-radius: 999px;
+          border: 1px solid rgba(203, 213, 225, 0.5);
+          background: rgba(15, 23, 42, 0.7);
+          color: #fff;
+          font-size: 1.45rem;
+          line-height: 1;
+          cursor: pointer;
+        }
+        .author-link {
+          display: inline-flex;
+          align-items: center;
+          gap: 0.55rem;
+          font-weight: 700;
+          color: ${tokens.colors.accent};
+        }
+        .author-avatar {
+          width: 28px;
+          height: 28px;
+          border-radius: 50%;
+          overflow: hidden;
+          border: 1px solid ${tokens.colors.border};
+          background: ${tokens.colors.card};
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          font-size: 0.78rem;
+          font-weight: 800;
+          color: ${tokens.colors.textMuted};
+        }
+        .author-avatar img {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          display: block;
         }
         .photo-detail-title {
           word-break: break-word;
@@ -399,7 +471,15 @@ export function PhotoDetail() {
       <main className="photo-detail-main-grid">
         {/* Lado Izquierdo: Imagen */}
         <div className="photo-detail-image-box" style={s.imageBox}>
-          <img src={photo.image_url} alt={photo.title} style={s.image} />
+          <button
+            type="button"
+            className="photo-detail-image-btn"
+            onClick={() => setLightboxOpen(true)}
+            aria-label="Ver imagen ampliada"
+            title="Click para ampliar"
+          >
+            <img src={photo.image_url} alt={photo.title} style={s.image} />
+          </button>
         </div>
 
         {/* Lado Derecho: Info */}
@@ -414,9 +494,25 @@ export function PhotoDetail() {
           <div className="photo-detail-meta-grid" style={s.metaGrid}>
             <div>
               <p style={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.colors.textMuted, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Autor</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
-                <User size={16} /> @{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}
-              </div>
+              {authorProfilePath ? (
+                <Link
+                  to={authorProfilePath}
+                  className="author-link"
+                >
+                  <span className="author-avatar">
+                    {photo.profiles?.avatar_url ? (
+                      <img src={photo.profiles.avatar_url} alt={`Avatar de ${photo.profiles?.username || 'usuario'}`} />
+                    ) : (
+                      (photo.profiles?.username || photo.profiles?.full_name || 'U').charAt(0).toUpperCase()
+                    )}
+                  </span>
+                  <User size={16} /> @{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}
+                </Link>
+              ) : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+                  <User size={16} /> @{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}
+                </div>
+              )}
             </div>
             <div>
               <p style={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.colors.textMuted, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Comunidad</p>
@@ -574,6 +670,36 @@ export function PhotoDetail() {
         </div>
       </main>
       </div>
+      {lightboxOpen && createPortal(
+        <div
+          className="photo-detail-lightbox"
+          onClick={() => setLightboxOpen(false)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') {
+              setLightboxOpen(false);
+            }
+          }}
+        >
+          <button
+            type="button"
+            className="photo-detail-lightbox-close"
+            aria-label="Cerrar imagen ampliada"
+            onClick={(event) => {
+              event.stopPropagation();
+              setLightboxOpen(false);
+            }}
+          >
+            ×
+          </button>
+          <img
+            src={photo.image_url}
+            alt={photo.title}
+            onClick={(event) => event.stopPropagation()}
+          />
+        </div>
+      , document.body)}
     </div>
   );
 }
