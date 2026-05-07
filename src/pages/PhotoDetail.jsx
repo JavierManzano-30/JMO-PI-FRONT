@@ -3,7 +3,15 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
-import { getSubmissionById, getComments, addComment, deleteComment } from '../services/supabaseService';
+import {
+  getSubmissionById,
+  getComments,
+  addComment,
+  deleteComment,
+  getChatContacts,
+  searchUsers,
+  sendDirectMessage,
+} from '../services/supabaseService';
 import {
   Heart, 
   MessageSquare, 
@@ -12,11 +20,12 @@ import {
   MapPin, 
   Calendar,
   Trophy,
-  User,
   Trash2,
   Bookmark,
   Tag,
-  Send
+  Send,
+  MessageCircle,
+  X
 } from 'lucide-react';
 
 const MAX_COMMENT_LENGTH = 280;
@@ -145,6 +154,11 @@ export function PhotoDetail() {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  const [shareContacts, setShareContacts] = useState([]);
+  const [shareSearch, setShareSearch] = useState('');
+  const [shareResults, setShareResults] = useState([]);
+  const [sendingToUserId, setSendingToUserId] = useState(null);
   const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
   const rawBackendUserId = user?.backendId ?? user?.id;
   const backendUserId = typeof rawBackendUserId === 'number'
@@ -265,6 +279,78 @@ export function PhotoDetail() {
       if (err?.name === 'AbortError') return;
       console.error(err);
       alert('No se pudo compartir esta publicación.');
+    }
+  };
+
+  const getProfileName = (profile) => {
+    if (!profile) return 'Participante';
+    return profile.username || profile.display_name || `usuario_${profile.id}`;
+  };
+
+  const handleShareToChat = async () => {
+    if (!user) return navigate('/login');
+    if (!canWriteData) {
+      alert('Tu cuenta actual no está enlazada para usar el chat.');
+      return;
+    }
+
+    setShareSheetOpen(true);
+    setShareSearch('');
+    setShareResults([]);
+    try {
+      const contacts = await getChatContacts(backendUserId);
+      setShareContacts(contacts || []);
+    } catch (error) {
+      console.error('No se pudieron cargar contactos:', error);
+      setShareContacts([]);
+    }
+  };
+
+  useEffect(() => {
+    if (!shareSheetOpen || !backendUserId) return;
+    const normalized = shareSearch.trim();
+    if (normalized.length < 2) {
+      setShareResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    async function runSearch() {
+      try {
+        const results = await searchUsers(normalized, { excludeUserId: backendUserId, limit: 12 });
+        if (!cancelled) setShareResults(results || []);
+      } catch (error) {
+        console.error('No se pudo buscar usuarios para compartir:', error);
+        if (!cancelled) setShareResults([]);
+      }
+    }
+
+    runSearch();
+    return () => {
+      cancelled = true;
+    };
+  }, [shareSheetOpen, shareSearch, backendUserId]);
+
+  const closeShareSheet = () => {
+    setShareSheetOpen(false);
+    setShareSearch('');
+    setShareResults([]);
+    setSendingToUserId(null);
+  };
+
+  const handleSendSharedPost = async (targetUser) => {
+    if (!targetUser?.id || !backendUserId || sendingToUserId) return;
+    const sharedLink = `${window.location.origin}/photos/${photoId}`;
+    const message = `📸 ${photo?.title || 'Mira esta publicación'}\n${sharedLink}`;
+    setSendingToUserId(targetUser.id);
+    try {
+      await sendDirectMessage(backendUserId, targetUser.id, message);
+      closeShareSheet();
+    } catch (error) {
+      console.error('No se pudo compartir en chat:', error);
+      alert('No se pudo compartir la publicación en el chat.');
+    } finally {
+      setSendingToUserId(null);
     }
   };
 
@@ -478,7 +564,14 @@ export function PhotoDetail() {
             aria-label="Ver imagen ampliada"
             title="Click para ampliar"
           >
-            <img src={photo.image_url} alt={photo.title} style={s.image} />
+            <img
+              src={photo.image_url}
+              alt={photo.title}
+              style={s.image}
+              loading="eager"
+              fetchPriority="high"
+              decoding="async"
+            />
           </button>
         </div>
 
@@ -506,11 +599,11 @@ export function PhotoDetail() {
                       (photo.profiles?.username || photo.profiles?.full_name || 'U').charAt(0).toUpperCase()
                     )}
                   </span>
-                  <User size={16} /> @{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}
+                  @{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}
                 </Link>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
-                  <User size={16} /> @{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}
+                  @{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}
                 </div>
               )}
             </div>
@@ -555,6 +648,15 @@ export function PhotoDetail() {
               {!user && <div style={{ position: 'absolute', top: '50%', left: '20%', right: '20%', height: '3px', background: '#94a3b8', transform: 'rotate(-10deg)', pointerEvents: 'none', opacity: 0.8 }} />}
             </div>
             
+            <button
+              type="button"
+              onClick={handleShareToChat}
+              style={{ ...s.btnMain, background: 'transparent', border: `1px solid ${tokens.colors.border}`, color: isDark ? '#fff' : '#000', flex: 0.35 }}
+              title="Compartir en chat"
+            >
+              <MessageCircle size={20} />
+            </button>
+
             <button
               type="button"
               onClick={handleShare}
@@ -698,6 +800,80 @@ export function PhotoDetail() {
             alt={photo.title}
             onClick={(event) => event.stopPropagation()}
           />
+        </div>
+      , document.body)}
+      {shareSheetOpen && createPortal(
+        <div
+          onClick={closeShareSheet}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            zIndex: 10000,
+            display: 'grid',
+            placeItems: 'center',
+            padding: '1rem',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: 'min(520px, 100%)',
+              maxHeight: '80vh',
+              overflow: 'hidden',
+              background: isDark ? '#111b2e' : '#fff',
+              borderRadius: '1rem',
+              border: `1px solid ${isDark ? '#2a3a56' : '#dbe4f0'}`,
+              boxShadow: '0 20px 45px rgba(15, 23, 42, 0.25)',
+              display: 'grid',
+              gridTemplateRows: 'auto auto minmax(0, 1fr)',
+            }}
+          >
+            <header style={{ padding: '0.9rem 1rem', borderBottom: `1px solid ${isDark ? '#22314a' : '#eef2f7'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <strong style={{ color: isDark ? '#e6eefb' : '#0f172a' }}>Compartir en chat</strong>
+              <button type="button" onClick={closeShareSheet} style={{ border: 'none', background: 'transparent', color: isDark ? '#9db0cf' : '#64748b', cursor: 'pointer', padding: 0 }}>
+                <X size={18} />
+              </button>
+            </header>
+            <div style={{ padding: '0.75rem 1rem', borderBottom: `1px solid ${isDark ? '#22314a' : '#eef2f7'}` }}>
+              <input
+                type="text"
+                value={shareSearch}
+                onChange={(e) => setShareSearch(e.target.value)}
+                placeholder="Buscar usuario..."
+                style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${isDark ? '#2a3a56' : '#cbd5e1'}`, borderRadius: '0.65rem', padding: '0.55rem 0.7rem', outline: 'none', background: isDark ? '#0f182a' : '#fff', color: isDark ? '#e6eefb' : '#0f172a' }}
+              />
+            </div>
+            <div style={{ overflowY: 'auto', padding: '0.5rem' }}>
+              {(shareSearch.trim().length >= 2 ? shareResults : shareContacts).length === 0 ? (
+                <p style={{ margin: 0, padding: '0.8rem', color: isDark ? '#9db0cf' : '#64748b', fontSize: '0.86rem' }}>
+                  {shareSearch.trim().length >= 2 ? 'No se encontraron usuarios.' : 'No hay conversaciones recientes.'}
+                </p>
+              ) : (
+                (shareSearch.trim().length >= 2 ? shareResults : shareContacts).map((profile) => (
+                  <div key={`share-user-${profile.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.65rem', padding: '0.55rem', borderRadius: '0.7rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {profile.avatar_url ? <img src={profile.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{getProfileName(profile).charAt(0).toUpperCase()}</span>}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: '0.84rem', color: isDark ? '#e6eefb' : '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{getProfileName(profile)}</p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: isDark ? '#9db0cf' : '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.display_name || 'Participante'}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSendSharedPost(profile)}
+                      disabled={sendingToUserId === profile.id}
+                      style={{ border: 'none', borderRadius: '999px', background: '#2563eb', color: '#fff', padding: '0.45rem 0.8rem', fontWeight: 700, cursor: sendingToUserId === profile.id ? 'not-allowed' : 'pointer', opacity: sendingToUserId === profile.id ? 0.65 : 1 }}
+                    >
+                      {sendingToUserId === profile.id ? 'Enviando...' : 'Enviar'}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         </div>
       , document.body)}
     </div>

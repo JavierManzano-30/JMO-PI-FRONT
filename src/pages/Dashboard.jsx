@@ -148,6 +148,17 @@ const s = {
   },
 };
 
+const preloadedFullImages = new Set();
+let detailRoutePrefetched = false;
+
+function preloadFullImage(url) {
+  if (!url || preloadedFullImages.has(url)) return;
+  const img = new Image();
+  img.decoding = 'async';
+  img.src = url;
+  preloadedFullImages.add(url);
+}
+
 export function Dashboard() {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
@@ -235,6 +246,17 @@ export function Dashboard() {
   useEffect(() => {
     loadSubmissions();
   }, [loadSubmissions]);
+
+  useEffect(() => {
+    if (detailRoutePrefetched) return;
+    detailRoutePrefetched = true;
+    import('./PhotoDetail.jsx').catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!Array.isArray(submissions) || submissions.length === 0) return;
+    submissions.slice(0, 16).forEach((item) => preloadFullImage(item?.image_url));
+  }, [submissions]);
 
   const handleToggleVote = async (e, photoId, hasVoted) => {
     e.preventDefault();
@@ -411,6 +433,15 @@ export function Dashboard() {
   // Determinar si una tarjeta debe ser ancha (landscape)
   const isHorizontal = (index) => index % 5 === 0; 
 
+  const warmPhotoDetail = (item) => {
+    if (!item) return;
+    preloadFullImage(item.image_url);
+    if (!detailRoutePrefetched) {
+      detailRoutePrefetched = true;
+      import('./PhotoDetail.jsx').catch(() => {});
+    }
+  };
+
   return (
     <div style={s.page}>
       <style>{`
@@ -526,6 +557,9 @@ export function Dashboard() {
               key={item.id} 
               style={{ ...s.postCard, gridColumn: isHorizontal(index) ? 'span 2' : 'span 1' }} 
               className="vibe-card"
+              onMouseEnter={() => warmPhotoDetail(item)}
+              onFocus={() => warmPhotoDetail(item)}
+              onTouchStart={() => warmPhotoDetail(item)}
             >
               <div style={s.imageWrapper}>
                 <img src={getOptimizedUrl(item.image_url)} style={s.image} alt={item.title} loading="lazy" decoding="async" />
