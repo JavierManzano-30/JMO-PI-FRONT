@@ -246,6 +246,22 @@
   z-index: 1;
 }
 
+.page.page--plain {
+  width: 100%;
+  margin: 0;
+  isolation: auto;
+  overflow: visible;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  animation: none;
+}
+
+.page.page--plain::before,
+.page.page--plain::after {
+  display: none;
+}
+
 .global-fab {
   position: fixed;
   right: 2.5rem;

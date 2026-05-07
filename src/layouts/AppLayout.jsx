@@ -8,6 +8,7 @@ export function AppLayout({ layout }) {
   const location = useLocation();
   const isAppArea = location.pathname.startsWith('/app');
   const isUploadPage = location.pathname === '/app/photos/upload';
+  const isGalleryRoute = location.pathname === '/gallery' || location.pathname === '/app/dashboard';
 
   return (
     <div className="site-shell">
@@ -17,7 +18,7 @@ export function AppLayout({ layout }) {
         authActions={layout.authActions}
       />
 
-      <main className="page">
+      <main className={`page${isGalleryRoute ? ' page--plain' : ''}`}>
         <Outlet />
       </main>
 

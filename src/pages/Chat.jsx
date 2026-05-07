@@ -8,8 +8,9 @@ import {
   searchUsers,
   getUserById,
   subscribeToConversation,
+  getSubmissionById,
 } from '../services/supabaseService';
-import { ArrowLeft, MessageCircle, Search, Send } from 'lucide-react';
+import { ArrowLeft, MessageCircle, Search, Send, X } from 'lucide-react';
 
 function parsePositiveInt(value) {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) return value;
@@ -31,9 +32,10 @@ function formatHour(value) {
 
 export function Chat() {
   const { user } = useAuth();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
   const currentUserId = useMemo(() => parsePositiveInt(user?.backendId ?? user?.id), [user?.backendId, user?.id]);
   const prefUserId = useMemo(() => parsePositiveInt(params.get('user')), [params]);
+  const sharePhotoId = useMemo(() => parsePositiveInt(params.get('share')), [params]);
 
   const [contacts, setContacts] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -44,6 +46,9 @@ export function Chat() {
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [loadingConversation, setLoadingConversation] = useState(false);
   const [sending, setSending] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 980px)').matches);
+  const [mobileScreen, setMobileScreen] = useState('list');
+  const [sharedPost, setSharedPost] = useState(null);
 
   const messagesContainerRef = useRef(null);
   const previousMessagesCountRef = useRef(0);
@@ -93,9 +98,29 @@ export function Chat() {
   }, [currentUserId, refreshContacts]);
 
   useEffect(() => {
-    if (selectedUser?.id || prefUserId || loadingContacts) return;
+    if (isMobile || selectedUser?.id || prefUserId || loadingContacts) return;
     if (contacts.length > 0) setSelectedUser(contacts[0]);
-  }, [contacts, loadingContacts, prefUserId, selectedUser?.id]);
+  }, [contacts, isMobile, loadingContacts, prefUserId, selectedUser?.id]);
+
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 980px)');
+    const onChange = (event) => setIsMobile(event.matches);
+    media.addEventListener('change', onChange);
+    setIsMobile(media.matches);
+    return () => media.removeEventListener('change', onChange);
+  }, []);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobileScreen('chat');
+      return;
+    }
+    if (prefUserId) {
+      setMobileScreen('chat');
+      return;
+    }
+    setMobileScreen('list');
+  }, [isMobile, prefUserId]);
 
   useEffect(() => {
     if (!currentUserId || !prefUserId || prefUserId === currentUserId) return;
@@ -106,6 +131,7 @@ export function Chat() {
         if (!target) return;
 
         setSelectedUser(target);
+        if (isMobile) setMobileScreen('chat');
         setContacts((prev) => {
           if (prev.some((c) => c.id === target.id)) return prev;
           return [target, ...prev];
@@ -116,7 +142,30 @@ export function Chat() {
     }
 
     preloadPreferredUser();
-  }, [currentUserId, prefUserId]);
+  }, [currentUserId, isMobile, prefUserId]);
+
+  useEffect(() => {
+    if (!sharePhotoId) {
+      setSharedPost(null);
+      return;
+    }
+
+    let cancelled = false;
+    async function loadSharedPost() {
+      try {
+        const post = await getSubmissionById(sharePhotoId);
+        if (!cancelled) setSharedPost(post || { id: sharePhotoId });
+      } catch (error) {
+        console.error('No se pudo cargar la publicación a compartir:', error);
+        if (!cancelled) setSharedPost({ id: sharePhotoId });
+      }
+    }
+
+    loadSharedPost();
+    return () => {
+      cancelled = true;
+    };
+  }, [sharePhotoId]);
 
   useEffect(() => {
     if (!currentUserId || !selectedUser?.id) {
@@ -201,11 +250,18 @@ export function Chat() {
   const handleSelectUser = (profile) => {
     if (!profile?.id) return;
     setSelectedUser(profile);
+    if (isMobile) setMobileScreen('chat');
     setContacts((prev) => {
       if (prev.some((item) => item.id === profile.id)) return prev;
       return [profile, ...prev];
     });
   };
+
+  const clearShareParam = useCallback(() => {
+    const next = new URLSearchParams(params);
+    next.delete('share');
+    setParams(next, { replace: true });
+  }, [params, setParams]);
 
   const handleSend = async (event) => {
     event.preventDefault();
@@ -214,16 +270,24 @@ export function Chat() {
     const targetUser = selectedUser;
     const targetUserId = targetUser.id;
     const normalized = draft.trim();
-    if (!normalized) return;
+    const sharedLink = sharePhotoId ? `${window.location.origin}/photos/${sharePhotoId}` : '';
+    const sharedCaption = sharedPost?.title ? `📸 ${sharedPost.title}` : '📸 Mira esta publicación';
+    const sharePayload = sharePhotoId ? `${sharedCaption}\n${sharedLink}` : '';
+    const messageToSend = normalized && sharePayload ? `${normalized}\n\n${sharePayload}` : (normalized || sharePayload);
+    if (!messageToSend.trim()) return;
 
     setSending(true);
     try {
-      const created = await sendDirectMessage(currentUserId, targetUserId, normalized);
+      const created = await sendDirectMessage(currentUserId, targetUserId, messageToSend);
       const expectedConversationKey = `${currentUserId}:${targetUserId}`;
       if (activeConversationRef.current === expectedConversationKey) {
         setMessages((prev) => (prev.some((m) => m.id === created.id) ? prev : [...prev, created]));
       }
       setDraft('');
+      if (sharePhotoId) {
+        setSharedPost(null);
+        clearShareParam();
+      }
       bumpContact(targetUserId, targetUser, created.created_at);
       refreshContacts();
     } catch (err) {
@@ -257,11 +321,15 @@ export function Chat() {
             min-height: 0;
           }
           .chat-sidebar {
-            max-height: 40vh;
+            max-height: 75vh;
           }
           .chat-main {
-            height: 58vh;
-            min-height: 58vh !important;
+            height: 75vh;
+            min-height: 75vh !important;
+          }
+          .chat-main.mobile-hidden,
+          .chat-sidebar.mobile-hidden {
+            display: none !important;
           }
         }
       `}</style>
@@ -273,7 +341,12 @@ export function Chat() {
       </header>
 
       <section className="chat-grid" style={{ maxWidth: '1160px', margin: '0 auto' }}>
-        <aside className="chat-sidebar" style={{ background: '#fff', borderRadius: '1rem', border: '1px solid #e2e8f0', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)' }}>
+        <aside className={`chat-sidebar ${isMobile && mobileScreen === 'chat' ? 'mobile-hidden' : ''}`} style={{ background: '#fff', borderRadius: '1rem', border: '1px solid #e2e8f0', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)' }}>
+          {isMobile && (
+            <div style={{ padding: '0.8rem 1rem 0.4rem', borderBottom: '1px solid #f1f5f9' }}>
+              <p style={{ margin: 0, fontWeight: 900, color: '#0f172a' }}>Mensajes</p>
+            </div>
+          )}
           <div style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9', minHeight: '76px', boxSizing: 'border-box' }}>
             <div style={{ position: 'relative' }}>
               <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
@@ -362,11 +435,21 @@ export function Chat() {
           </div>
         </aside>
 
-        <article className="chat-main" style={{ background: '#fff', borderRadius: '1rem', border: '1px solid #e2e8f0', display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', height: '100%' }}>
+        <article className={`chat-main ${isMobile && mobileScreen !== 'chat' ? 'mobile-hidden' : ''}`} style={{ background: '#fff', borderRadius: '1rem', border: '1px solid #e2e8f0', display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', height: '100%' }}>
           <header style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', minHeight: '76px', boxSizing: 'border-box' }}>
             {selectedUser ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
+                  {isMobile && (
+                    <button
+                      type="button"
+                      onClick={() => setMobileScreen('list')}
+                      style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: '#64748b', padding: 0, display: 'inline-flex', alignItems: 'center' }}
+                      aria-label="Volver a mensajes"
+                    >
+                      <ArrowLeft size={18} />
+                    </button>
+                  )}
                   <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {selectedUser.avatar_url ? <img src={selectedUser.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{getUserName(selectedUser).charAt(0).toUpperCase()}</span>}
                   </div>
@@ -413,42 +496,54 @@ export function Chat() {
             )}
           </div>
 
-          <form onSubmit={handleSend} style={{ borderTop: '1px solid #f1f5f9', padding: '0.8rem', display: 'flex', gap: '0.55rem' }}>
-            <input
-              type="text"
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              placeholder={selectedUser ? 'Escribe un mensaje...' : 'Selecciona un usuario para escribir'}
-              disabled={!selectedUser || sending}
-              maxLength={2000}
-              style={{
-                flex: 1,
-                border: '1px solid #cbd5e1',
-                borderRadius: '0.7rem',
-                padding: '0.65rem 0.8rem',
-                outline: 'none',
-                background: !selectedUser ? '#f8fafc' : '#fff',
-              }}
-            />
-            <button
-              type="submit"
-              disabled={!selectedUser || sending || !draft.trim()}
-              style={{
-                border: 'none',
-                borderRadius: '0.7rem',
-                padding: '0.65rem 0.9rem',
-                background: '#2563eb',
-                color: '#fff',
-                fontWeight: 700,
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                cursor: !selectedUser || sending || !draft.trim() ? 'not-allowed' : 'pointer',
-                opacity: !selectedUser || sending || !draft.trim() ? 0.6 : 1,
-              }}
-            >
-              <Send size={15} /> Enviar
-            </button>
+          <form onSubmit={handleSend} style={{ borderTop: '1px solid #f1f5f9', padding: '0.8rem', display: 'grid', gap: '0.5rem' }}>
+            {sharedPost && (
+              <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '0.7rem', padding: '0.45rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.5rem', maxWidth: '100%' }}>
+                <span style={{ fontSize: '0.76rem', color: '#1e3a8a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  Compartiendo: {sharedPost?.title || `Publicación #${sharePhotoId}`}
+                </span>
+                <button type="button" onClick={() => { setSharedPost(null); clearShareParam(); }} style={{ border: 'none', background: 'transparent', color: '#1e3a8a', padding: 0, cursor: 'pointer' }} aria-label="Quitar publicación compartida">
+                  <X size={14} />
+                </button>
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '0.55rem' }}>
+              <input
+                type="text"
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                placeholder={selectedUser ? (sharedPost ? 'Añade un texto opcional...' : 'Escribe un mensaje...') : 'Selecciona un usuario para escribir'}
+                disabled={!selectedUser || sending}
+                maxLength={2000}
+                style={{
+                  flex: 1,
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '0.7rem',
+                  padding: '0.65rem 0.8rem',
+                  outline: 'none',
+                  background: !selectedUser ? '#f8fafc' : '#fff',
+                }}
+              />
+              <button
+                type="submit"
+                disabled={!selectedUser || sending || (!draft.trim() && !sharePhotoId)}
+                style={{
+                  border: 'none',
+                  borderRadius: '0.7rem',
+                  padding: '0.65rem 0.9rem',
+                  background: '#2563eb',
+                  color: '#fff',
+                  fontWeight: 700,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  cursor: !selectedUser || sending || (!draft.trim() && !sharePhotoId) ? 'not-allowed' : 'pointer',
+                  opacity: !selectedUser || sending || (!draft.trim() && !sharePhotoId) ? 0.6 : 1,
+                }}
+              >
+                <Send size={15} /> Enviar
+              </button>
+            </div>
           </form>
         </article>
       </section>

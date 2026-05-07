@@ -6,12 +6,17 @@ import {
   getContests, 
   getCategories, 
   getSubmissions,
-  getFollowing
+  getFollowing,
+  getChatContacts,
+  searchUsers,
+  sendDirectMessage,
 } from '../services/supabaseService';
 import { 
   Heart,
   ArrowUp,
   MessageSquare,
+  Send,
+  X,
   Search,
   Compass,
   MessageCircle
@@ -151,6 +156,13 @@ export function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [toastMsg, setToastMsg] = useState(null);
   const [feedMode, setFeedMode] = useState(() => (params.get('feed') === 'following' ? 'following' : 'all'));
+  const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  const [shareSubmission, setShareSubmission] = useState(null);
+  const [shareContacts, setShareContacts] = useState([]);
+  const [shareSearch, setShareSearch] = useState('');
+  const [shareResults, setShareResults] = useState([]);
+  const [sendingToUserId, setSendingToUserId] = useState(null);
+  const [shareAnchorRect, setShareAnchorRect] = useState(null);
   const rawBackendUserId = user?.backendId ?? user?.id;
   const backendUserId = typeof rawBackendUserId === 'number'
     ? (Number.isInteger(rawBackendUserId) && rawBackendUserId > 0 ? rawBackendUserId : null)
@@ -167,6 +179,11 @@ export function Dashboard() {
   const activeFilters = {
     contestId: params.get('contest') || '',
     categoryId: params.get('category') || '',
+  };
+
+  const getProfileName = (profile) => {
+    if (!profile) return 'Participante';
+    return profile.username || profile.display_name || `usuario_${profile.id}`;
   };
 
   const updateFeedMode = (nextMode) => {
@@ -259,6 +276,99 @@ export function Dashboard() {
     navigate(profilePath);
   };
 
+  const handleShareToChat = async (event, submission) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!user) {
+      setToastMsg('Debes iniciar sesión para compartir en el chat.');
+      setTimeout(() => setToastMsg(null), 3000);
+      return;
+    }
+    if (!canWriteData) {
+      setToastMsg('Tu cuenta actual no está enlazada para usar el chat.');
+      setTimeout(() => setToastMsg(null), 3000);
+      return;
+    }
+    if (!submission?.id) return;
+
+    if (event?.currentTarget?.getBoundingClientRect) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setShareAnchorRect({
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+      });
+    } else {
+      setShareAnchorRect(null);
+    }
+    setShareSubmission(submission);
+    setShareSheetOpen(true);
+    setShareSearch('');
+    setShareResults([]);
+
+    try {
+      const contacts = await getChatContacts(backendUserId);
+      setShareContacts(contacts || []);
+    } catch (error) {
+      console.error('No se pudieron cargar contactos para compartir:', error);
+      setShareContacts([]);
+    }
+  };
+
+  useEffect(() => {
+    if (!shareSheetOpen || !backendUserId) return;
+    const normalized = shareSearch.trim();
+    if (normalized.length < 2) {
+      setShareResults([]);
+      return;
+    }
+
+    let cancelled = false;
+    async function runSearch() {
+      try {
+        const results = await searchUsers(normalized, { excludeUserId: backendUserId, limit: 12 });
+        if (!cancelled) setShareResults(results || []);
+      } catch (error) {
+        console.error('No se pudo buscar usuarios para compartir:', error);
+        if (!cancelled) setShareResults([]);
+      }
+    }
+
+    runSearch();
+    return () => {
+      cancelled = true;
+    };
+  }, [shareSheetOpen, shareSearch, backendUserId]);
+
+  const closeShareSheet = () => {
+    setShareSheetOpen(false);
+    setShareSubmission(null);
+    setShareSearch('');
+    setShareResults([]);
+    setSendingToUserId(null);
+    setShareAnchorRect(null);
+  };
+
+  const handleSendSharedPost = async (targetUser) => {
+    if (!targetUser?.id || !shareSubmission?.id || !backendUserId || sendingToUserId) return;
+    const sharedLink = `${window.location.origin}/photos/${shareSubmission.id}`;
+    const message = `📸 ${shareSubmission.title || 'Mira esta publicación'}\n${sharedLink}`;
+    setSendingToUserId(targetUser.id);
+    try {
+      await sendDirectMessage(backendUserId, targetUser.id, message);
+      setToastMsg(`Publicación enviada a @${getProfileName(targetUser)}`);
+      setTimeout(() => setToastMsg(null), 2500);
+      closeShareSheet();
+    } catch (error) {
+      console.error('No se pudo compartir en chat:', error);
+      setToastMsg('No se pudo compartir la publicación.');
+      setTimeout(() => setToastMsg(null), 3000);
+    } finally {
+      setSendingToUserId(null);
+    }
+  };
+
   const getOptimizedUrl = (url) => {
     if (!url) return '';
     // Transformaciones ultra rápidas para Cloudinary (baja calidad, autoformato, ancho max 800px)
@@ -299,16 +409,17 @@ export function Dashboard() {
         .action-icon:hover { background: #f1f5f9; color: #111827; }
         .heart-btn:hover { background: #fee2e2 !important; color: #ef4444 !important; }
         .comment-btn:hover { background: #dcfce7 !important; color: #059669 !important; }
+        .share-btn:hover { background: #dbeafe !important; color: #2563eb !important; }
         .vote-active { color: ${tokens.colors.accent} !important; background: #dbeafe !important; }
         .heart-active { color: #ef4444 !important; background: #fee2e2 !important; }
         @media (max-width: 1100px) {
-          .gallery-grid {
+          .gallery-feed {
             grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
             grid-auto-rows: 420px !important;
             gap: 1rem !important;
             padding: 1.2rem !important;
           }
-          .gallery-grid .vibe-card {
+          .gallery-feed .vibe-card {
             grid-column: span 1 !important;
           }
         }
@@ -317,13 +428,13 @@ export function Dashboard() {
             padding: 0 1rem !important;
             margin-top: 0.8rem !important;
           }
-          .gallery-grid {
+          .gallery-feed {
             grid-template-columns: 1fr !important;
             grid-auto-rows: 360px !important;
             gap: 0.9rem !important;
             padding: 1rem !important;
           }
-          .gallery-grid .vibe-card {
+          .gallery-feed .vibe-card {
             border-radius: 18px !important;
             grid-column: span 1 !important;
           }
@@ -390,7 +501,7 @@ export function Dashboard() {
         </div>
       </div>
 
-      <main className="gallery-grid" style={{ ...s.gallery, paddingTop: '0.75rem', margin: 0 }}>
+      <main className="gallery-feed" style={{ ...s.gallery, paddingTop: '0.75rem', margin: 0 }}>
         {loading ? (
           <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '10rem', color: tokens.colors.textMuted, fontWeight: 600 }}>Cargando Feed...</div>
         ) : submissions.length === 0 ? (
@@ -453,6 +564,15 @@ export function Dashboard() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => handleShareToChat(e, item)}
+                    style={{ ...s.actionBtn }}
+                    className="action-icon share-btn"
+                    aria-label="Compartir en chat"
+                  >
+                    <Send size={18} />
+                  </button>
                   {/* Botón Comentarios */}
                   <div style={{ position: 'relative' }}>
                     <button 
@@ -539,6 +659,112 @@ export function Dashboard() {
         }}>
           <span>🔐</span> {toastMsg}
         </div>
+      )}
+
+      {shareSheetOpen && (
+        (() => {
+          const viewportH = typeof window !== 'undefined' ? window.innerHeight : 900;
+          const viewportW = typeof window !== 'undefined' ? window.innerWidth : 1400;
+          const mobile = typeof window !== 'undefined' ? window.matchMedia('(max-width: 760px)').matches : false;
+          const modalWidth = Math.min(520, viewportW - 24);
+          const modalHeightEstimate = 520;
+          const defaultLeft = Math.max(12, (viewportW - modalWidth) / 2);
+          const defaultTop = Math.max(76, Math.min(120, viewportH - modalHeightEstimate - 12));
+          let modalLeft = defaultLeft;
+          let modalTop = defaultTop;
+
+          if (!mobile && shareAnchorRect) {
+            const anchorCenterX = (shareAnchorRect.left + shareAnchorRect.right) / 2;
+            modalLeft = anchorCenterX - (modalWidth / 2);
+            modalLeft = Math.max(12, Math.min(modalLeft, viewportW - modalWidth - 12));
+
+            // Prefer opening above the share icon to keep the panel near the trigger.
+            modalTop = shareAnchorRect.top - modalHeightEstimate - 8;
+            if (modalTop < 76) {
+              modalTop = shareAnchorRect.bottom + 8;
+            }
+            modalTop = Math.max(76, Math.min(modalTop, viewportH - modalHeightEstimate - 12));
+          }
+
+          if (mobile && shareAnchorRect) {
+            modalTop = Math.max(76, Math.min(shareAnchorRect.bottom + 8, viewportH - modalHeightEstimate - 12));
+          }
+          return (
+        <div
+          onClick={closeShareSheet}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15, 23, 42, 0.45)',
+            zIndex: 10000,
+            display: 'block',
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: mobile ? 'calc(100% - 1.5rem)' : `${modalWidth}px`,
+              maxHeight: mobile ? 'calc(100vh - 1.5rem)' : '80vh',
+              position: 'fixed',
+              left: mobile ? '0.75rem' : `${modalLeft}px`,
+              top: mobile ? `${modalTop}px` : `${modalTop}px`,
+              overflow: 'hidden',
+              background: '#fff',
+              borderRadius: '1rem',
+              border: '1px solid #dbe4f0',
+              boxShadow: '0 20px 45px rgba(15, 23, 42, 0.25)',
+              display: 'grid',
+              gridTemplateRows: 'auto auto minmax(0, 1fr)',
+            }}
+          >
+            <header style={{ padding: '0.9rem 1rem', borderBottom: '1px solid #eef2f7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <strong style={{ color: '#0f172a' }}>Compartir en chat</strong>
+              <button type="button" onClick={closeShareSheet} style={{ border: 'none', background: 'transparent', color: '#64748b', cursor: 'pointer', padding: 0 }}>
+                <X size={18} />
+              </button>
+            </header>
+            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #eef2f7' }}>
+              <input
+                type="text"
+                value={shareSearch}
+                onChange={(e) => setShareSearch(e.target.value)}
+                placeholder="Buscar usuario..."
+                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '0.65rem', padding: '0.55rem 0.7rem', outline: 'none' }}
+              />
+            </div>
+            <div style={{ overflowY: 'auto', padding: '0.5rem' }}>
+              {(shareSearch.trim().length >= 2 ? shareResults : shareContacts).length === 0 ? (
+                <p style={{ margin: 0, padding: '0.8rem', color: '#64748b', fontSize: '0.86rem' }}>
+                  {shareSearch.trim().length >= 2 ? 'No se encontraron usuarios.' : 'No hay conversaciones recientes.'}
+                </p>
+              ) : (
+                (shareSearch.trim().length >= 2 ? shareResults : shareContacts).map((profile) => (
+                  <div key={`share-user-${profile.id}`} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.65rem', padding: '0.55rem', borderRadius: '0.7rem' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', minWidth: 0 }}>
+                      <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        {profile.avatar_url ? <img src={profile.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{getProfileName(profile).charAt(0).toUpperCase()}</span>}
+                      </div>
+                      <div style={{ minWidth: 0 }}>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: '0.84rem', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{getProfileName(profile)}</p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.display_name || 'Participante'}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleSendSharedPost(profile)}
+                      disabled={sendingToUserId === profile.id}
+                      style={{ border: 'none', borderRadius: '999px', background: '#2563eb', color: '#fff', padding: '0.45rem 0.8rem', fontWeight: 700, cursor: sendingToUserId === profile.id ? 'not-allowed' : 'pointer', opacity: sendingToUserId === profile.id ? 0.65 : 1 }}
+                    >
+                      {sendingToUserId === profile.id ? 'Enviando...' : 'Enviar'}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+          );
+        })()
       )}
 
       <style>{`
