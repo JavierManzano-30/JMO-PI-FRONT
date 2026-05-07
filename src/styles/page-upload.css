@@ -238,6 +238,49 @@
   font-size: 0.9rem;
 }
 
+html[data-theme='dark'] .upload-form-section {
+  border-color: var(--border);
+  background: var(--surface-soft);
+}
+
+html[data-theme='dark'] .upload-theme-summary {
+  border-color: var(--border);
+  background: #1a2a45;
+}
+
+html[data-theme='dark'] .upload-theme-summary strong {
+  color: #bfd5ff;
+}
+
+html[data-theme='dark'] .upload-preview-status {
+  border-color: var(--border);
+  background: #1a2a45;
+  color: #bfd5ff;
+}
+
+html[data-theme='dark'] .upload-preview-frame {
+  border-color: var(--border);
+  background: #15243a;
+}
+
+html[data-theme='dark'] .upload-preview-data > div {
+  border-color: var(--border);
+  background: #15243a;
+}
+
+html[data-theme='dark'] .upload-preview-data dt {
+  color: #bfd5ff;
+}
+
+html[data-theme='dark'] .upload-success-summary > div {
+  border-color: var(--border);
+  background: #15243a;
+}
+
+html[data-theme='dark'] .upload-success-summary dt {
+  color: #bfd5ff;
+}
+
 .upload-success-actions {
   justify-content: center;
   margin-top: 0.2rem;

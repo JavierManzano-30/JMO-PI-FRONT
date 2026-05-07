@@ -24,13 +24,13 @@ import {
 
 const tokens = {
   colors: {
-    bg: '#f3f4f6',
-    white: '#ffffff',
-    text: '#111827',
-    textMuted: '#6b7280',
-    accent: '#2563eb',
-    accentHover: '#1d4ed8',
-    border: '#e5e7eb',
+    bg: 'var(--bg-page)',
+    white: 'var(--surface)',
+    text: 'var(--text)',
+    textMuted: 'var(--muted)',
+    accent: 'var(--primary)',
+    accentHover: 'var(--primary-hover)',
+    border: 'var(--border)',
   },
   shadows: {
     sm: '0 4px 20px rgba(0,0,0,0.05)',
@@ -49,7 +49,7 @@ const s = {
     position: 'sticky',
     top: 0,
     zIndex: 100,
-    background: 'rgba(255,255,255,0.9)',
+    background: 'var(--header-surface)',
     backdropFilter: 'blur(12px)',
     borderBottom: `1px solid ${tokens.colors.border}`,
     padding: '1rem 2rem',
@@ -109,7 +109,7 @@ const s = {
     alignItems: 'center',
     justifyContent: 'space-between',
     background: tokens.colors.white,
-    borderTop: `1px solid #f9fafb`,
+    borderTop: `1px solid ${tokens.colors.border}`,
   },
   author: {
     display: 'flex',
@@ -163,6 +163,8 @@ export function Dashboard() {
   const [shareResults, setShareResults] = useState([]);
   const [sendingToUserId, setSendingToUserId] = useState(null);
   const [shareAnchorRect, setShareAnchorRect] = useState(null);
+  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
+  const isDark = theme === 'dark';
   const rawBackendUserId = user?.backendId ?? user?.id;
   const backendUserId = typeof rawBackendUserId === 'number'
     ? (Number.isInteger(rawBackendUserId) && rawBackendUserId > 0 ? rawBackendUserId : null)
@@ -180,6 +182,15 @@ export function Dashboard() {
     contestId: params.get('contest') || '',
     categoryId: params.get('category') || '',
   };
+
+  useEffect(() => {
+    const onThemeChange = (event) => {
+      const next = event?.detail || document.documentElement.getAttribute('data-theme') || 'light';
+      setTheme(next);
+    };
+    window.addEventListener('snapnation:theme-change', onThemeChange);
+    return () => window.removeEventListener('snapnation:theme-change', onThemeChange);
+  }, []);
 
   const getProfileName = (profile) => {
     if (!profile) return 'Participante';
@@ -709,32 +720,32 @@ export function Dashboard() {
               left: mobile ? '0.75rem' : `${modalLeft}px`,
               top: mobile ? `${modalTop}px` : `${modalTop}px`,
               overflow: 'hidden',
-              background: '#fff',
+              background: isDark ? '#111b2e' : '#fff',
               borderRadius: '1rem',
-              border: '1px solid #dbe4f0',
+              border: `1px solid ${isDark ? '#2a3a56' : '#dbe4f0'}`,
               boxShadow: '0 20px 45px rgba(15, 23, 42, 0.25)',
               display: 'grid',
               gridTemplateRows: 'auto auto minmax(0, 1fr)',
             }}
           >
-            <header style={{ padding: '0.9rem 1rem', borderBottom: '1px solid #eef2f7', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
-              <strong style={{ color: '#0f172a' }}>Compartir en chat</strong>
-              <button type="button" onClick={closeShareSheet} style={{ border: 'none', background: 'transparent', color: '#64748b', cursor: 'pointer', padding: 0 }}>
+            <header style={{ padding: '0.9rem 1rem', borderBottom: `1px solid ${isDark ? '#22314a' : '#eef2f7'}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem' }}>
+              <strong style={{ color: isDark ? '#e6eefb' : '#0f172a' }}>Compartir en chat</strong>
+              <button type="button" onClick={closeShareSheet} style={{ border: 'none', background: 'transparent', color: isDark ? '#9db0cf' : '#64748b', cursor: 'pointer', padding: 0 }}>
                 <X size={18} />
               </button>
             </header>
-            <div style={{ padding: '0.75rem 1rem', borderBottom: '1px solid #eef2f7' }}>
+            <div style={{ padding: '0.75rem 1rem', borderBottom: `1px solid ${isDark ? '#22314a' : '#eef2f7'}` }}>
               <input
                 type="text"
                 value={shareSearch}
                 onChange={(e) => setShareSearch(e.target.value)}
                 placeholder="Buscar usuario..."
-                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '0.65rem', padding: '0.55rem 0.7rem', outline: 'none' }}
+                style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${isDark ? '#2a3a56' : '#cbd5e1'}`, borderRadius: '0.65rem', padding: '0.55rem 0.7rem', outline: 'none', background: isDark ? '#0f182a' : '#fff', color: isDark ? '#e6eefb' : '#0f172a' }}
               />
             </div>
             <div style={{ overflowY: 'auto', padding: '0.5rem' }}>
               {(shareSearch.trim().length >= 2 ? shareResults : shareContacts).length === 0 ? (
-                <p style={{ margin: 0, padding: '0.8rem', color: '#64748b', fontSize: '0.86rem' }}>
+                <p style={{ margin: 0, padding: '0.8rem', color: isDark ? '#9db0cf' : '#64748b', fontSize: '0.86rem' }}>
                   {shareSearch.trim().length >= 2 ? 'No se encontraron usuarios.' : 'No hay conversaciones recientes.'}
                 </p>
               ) : (
@@ -745,8 +756,8 @@ export function Dashboard() {
                         {profile.avatar_url ? <img src={profile.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{getProfileName(profile).charAt(0).toUpperCase()}</span>}
                       </div>
                       <div style={{ minWidth: 0 }}>
-                        <p style={{ margin: 0, fontWeight: 800, fontSize: '0.84rem', color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{getProfileName(profile)}</p>
-                        <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.display_name || 'Participante'}</p>
+                        <p style={{ margin: 0, fontWeight: 800, fontSize: '0.84rem', color: isDark ? '#e6eefb' : '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{getProfileName(profile)}</p>
+                        <p style={{ margin: 0, fontSize: '0.75rem', color: isDark ? '#9db0cf' : '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.display_name || 'Participante'}</p>
                       </div>
                     </div>
                     <button

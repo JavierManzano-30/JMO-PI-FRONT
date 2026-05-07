@@ -140,6 +140,31 @@
   letter-spacing: -0.02em;
 }
 
+.section-kicker {
+  font-weight: 800;
+  font-size: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.section-kicker-live {
+  color: #ef4444;
+}
+
+.section-kicker-gold {
+  color: #f59e0b;
+}
+
+.section-kicker-muted {
+  color: #94a3b8;
+}
+
+.section-subtitle {
+  color: #64748b;
+  font-size: 0.875rem;
+}
+
 /* --- ACTIVE RANKING --- */
 .active-ranking-grid {
   display: grid;
@@ -155,6 +180,10 @@
   border: 1px solid #f1f5f9;
 }
 
+.theme-bracket.is-closed {
+  opacity: 0.9;
+}
+
 .theme-bracket-header {
   display: flex;
   justify-content: space-between;
@@ -165,6 +194,15 @@
 .theme-bracket-header h3 {
   font-size: 1.25rem;
   font-weight: 700;
+}
+
+.theme-bracket-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  min-width: 0;
 }
 
 .status-pulse {
@@ -269,6 +307,13 @@
 .rank-score b {
   font-size: 1rem;
   color: #2563eb;
+}
+
+.closed-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 /* --- HALL OF FAME --- */
@@ -391,6 +436,110 @@
   letter-spacing: 0.1em;
 }
 
+html[data-theme='dark'] .winners-page {
+  background: var(--bg-page);
+}
+
+html[data-theme='dark'] .winners-hero {
+  background: linear-gradient(135deg, #081225 0%, #0f1d36 60%, #11162b 100%);
+}
+
+html[data-theme='dark'] .winners-hero p {
+  color: rgba(216, 228, 249, 0.8);
+}
+
+html[data-theme='dark'] .filter-glass {
+  background: rgba(17, 27, 46, 0.92);
+  border-color: var(--border);
+  box-shadow: 0 14px 30px -10px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme='dark'] .filter-glass label {
+  color: var(--text);
+}
+
+html[data-theme='dark'] .filter-glass select {
+  color: #a8c4ff;
+}
+
+html[data-theme='dark'] .winners-section-head h2 {
+  color: var(--text);
+}
+
+html[data-theme='dark'] .section-subtitle {
+  color: #9cb1d3;
+}
+
+html[data-theme='dark'] .section-kicker-live {
+  color: #ff6a6a;
+}
+
+html[data-theme='dark'] .section-kicker-gold {
+  color: #f8bf54;
+}
+
+html[data-theme='dark'] .section-kicker-muted,
+html[data-theme='dark'] .closed-label {
+  color: #9db0cf;
+}
+
+html[data-theme='dark'] .theme-bracket {
+  background: #111f38;
+  border-color: var(--border);
+  box-shadow: 0 12px 30px -18px rgba(0, 0, 0, 0.55);
+}
+
+html[data-theme='dark'] .theme-bracket.is-closed {
+  opacity: 1;
+  background: #0f1b32;
+}
+
+html[data-theme='dark'] .theme-bracket-header h3 {
+  color: var(--text);
+}
+
+html[data-theme='dark'] .rank-item {
+  background: #1a2a45;
+}
+
+html[data-theme='dark'] .rank-item:hover {
+  background: #223555;
+}
+
+html[data-theme='dark'] .rank-item.top-1 {
+  background: linear-gradient(to right, #25261b, #1f2020);
+  border-color: #8f7a39;
+}
+
+html[data-theme='dark'] .rank-info b {
+  color: var(--text);
+}
+
+html[data-theme='dark'] .rank-info span,
+html[data-theme='dark'] .pg-info {
+  color: var(--muted);
+}
+
+html[data-theme='dark'] .rank-score b {
+  color: #81a8ff;
+}
+
+html[data-theme='dark'] .rank-score small {
+  color: #91a8cd;
+  opacity: 0.8 !important;
+}
+
+html[data-theme='dark'] .pg-btn {
+  background: #122342;
+  border-color: var(--border);
+  color: var(--text);
+}
+
+html[data-theme='dark'] .pg-btn:hover:not(:disabled) {
+  background: #1a3158;
+  border-color: #3c4f71;
+}
+
 @media (max-width: 768px) {
   .active-ranking-grid {
     grid-template-columns: 1fr;
@@ -406,6 +555,11 @@
     gap: 0.75rem;
     flex-direction: column;
     margin-bottom: 1rem;
+  }
+
+  .theme-bracket-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .rank-item {

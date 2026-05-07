@@ -230,12 +230,12 @@ export function Winners() {
       <section className="winners-section">
         <div className="winners-section-head">
           <div>
-            <span style={{ color: '#ef4444', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span className="section-kicker section-kicker-live">
               <Flame size={14} /> CONCURSOS ACTIVOS
             </span>
             <h2>Concursos en Curso</h2>
           </div>
-          <p style={{ color: '#64748b', fontSize: '0.875rem' }}>Clasificación provisional en tiempo real</p>
+          <p className="section-subtitle">Clasificación provisional en tiempo real</p>
         </div>
 
         {activeStatus === 'loading' && <StatusMessage tone="loading">Sincronizando rankings...</StatusMessage>}
@@ -248,7 +248,7 @@ export function Winners() {
               <div className="theme-bracket" key={`active-${group.themeId}`}>
                 <div className="theme-bracket-header">
                   <h3>{group.themeTitle}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <div className="theme-bracket-actions">
                     <div className="status-pulse">
                       <span className="pulse-dot" /> Live
                     </div>
@@ -293,7 +293,7 @@ export function Winners() {
       <section className="winners-section">
         <div className="winners-section-head">
           <div>
-            <span style={{ color: '#f59e0b', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span className="section-kicker section-kicker-gold">
               <Trophy size={14} /> ELITE SELECTION
             </span>
             <h2>Salón de la Fama</h2>
@@ -336,7 +336,7 @@ export function Winners() {
       <section className="winners-section">
         <div className="winners-section-head">
           <div>
-            <span style={{ color: '#94a3b8', fontWeight: 800, fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span className="section-kicker section-kicker-muted">
               <History size={14} /> ARCHIVE
             </span>
             <h2>Concursos Finalizados</h2>
@@ -350,11 +350,11 @@ export function Winners() {
         {historyStatus === 'default' && (
           <div className="active-ranking-grid">
             {closedByTheme.map((group) => (
-              <div className="theme-bracket" key={`closed-${group.themeId}`} style={{ opacity: 0.85 }}>
+              <div className="theme-bracket is-closed" key={`closed-${group.themeId}`}>
                 <div className="theme-bracket-header">
                   <h3>{group.themeTitle}</h3>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 700 }}>FINALIZADO</span>
+                  <div className="theme-bracket-actions">
+                    <span className="closed-label">FINALIZADO</span>
                     <Link className="btn btn-link" to={`${contestsBasePath}/${group.themeId}`}>Ver concurso</Link>
                   </div>
                 </div>

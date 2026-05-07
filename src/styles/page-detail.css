@@ -493,6 +493,66 @@
   justify-self: end;
 }
 
+html[data-theme='dark'] .photo-description-block,
+html[data-theme='dark'] .photo-meta-panel,
+html[data-theme='dark'] .photo-vote-box,
+html[data-theme='dark'] .comments-form,
+html[data-theme='dark'] .comment-item,
+html[data-theme='dark'] .photo-description-note,
+html[data-theme='dark'] .podium-item,
+html[data-theme='dark'] .result-highlight-strip > div {
+  border-color: var(--border);
+  background: var(--surface-soft);
+}
+
+html[data-theme='dark'] .photo-meta-list > div {
+  border-color: var(--border);
+  background: #132137;
+}
+
+html[data-theme='dark'] .photo-meta-list dt,
+html[data-theme='dark'] .photo-description-note strong,
+html[data-theme='dark'] .podium-rank,
+html[data-theme='dark'] .result-highlight-strip span,
+html[data-theme='dark'] .vote-counter,
+html[data-theme='dark'] .comment-count-pill {
+  color: #bfd5ff;
+}
+
+html[data-theme='dark'] .photo-theme-line,
+html[data-theme='dark'] .comment-item p,
+html[data-theme='dark'] .result-highlight-strip strong {
+  color: var(--text);
+}
+
+html[data-theme='dark'] .contest-pill-open {
+  color: #b9f7d2;
+  border-color: #2b6d49;
+  background: #173026;
+}
+
+html[data-theme='dark'] .contest-pill-closed {
+  color: #c4dbff;
+  border-color: #355d9e;
+  background: #192c4c;
+}
+
+html[data-theme='dark'] .contest-pill-pending {
+  color: #ffd89f;
+  border-color: #8d6732;
+  background: #352611;
+}
+
+html[data-theme='dark'] .contest-pill-muted {
+  color: #c0cde1;
+  border-color: #425269;
+  background: #1a273b;
+}
+
+html[data-theme='dark'] .comments-form label {
+  color: #bfd5ff;
+}
+
 @media (max-width: 1180px) {
   .photo-detail-page {
     grid-template-columns: 1fr;

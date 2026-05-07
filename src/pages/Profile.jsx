@@ -141,8 +141,8 @@ export function Profile() {
 
   if (!viewedUserId) {
     return (
-      <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem' }}>
-        <p style={{ maxWidth: '960px', margin: '0 auto', color: '#64748b' }}>
+      <div style={{ minHeight: '100vh', background: 'var(--bg-page)', padding: '2rem' }}>
+        <p style={{ maxWidth: '960px', margin: '0 auto', color: 'var(--muted)' }}>
           No se pudo resolver el usuario del perfil.
         </p>
       </div>
@@ -150,15 +150,15 @@ export function Profile() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: 'var(--bg-page)', padding: '2rem', fontFamily: "'Inter', sans-serif", color: 'var(--text)' }}>
       <header style={{ maxWidth: '1000px', margin: '0 auto 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <Link to={backTo} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', textDecoration: 'none', fontWeight: 600 }}>
+        <Link to={backTo} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted)', textDecoration: 'none', fontWeight: 600 }}>
           <ArrowLeft size={18} /> Volver
         </Link>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
           {isOwnProfile && !isPublicRoute && (
-            <Link to="/app/profile/edit" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: '#fff', padding: '0.6rem 1.2rem', borderRadius: '0.75rem', border: '1px solid #e2e8f0', color: '#0f172a', textDecoration: 'none', fontWeight: 600 }}>
+            <Link to="/app/profile/edit" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', background: 'var(--surface)', padding: '0.6rem 1.2rem', borderRadius: '0.75rem', border: '1px solid var(--border)', color: 'var(--text)', textDecoration: 'none', fontWeight: 600 }}>
               <Settings size={18} /> Editar Perfil
             </Link>
           )}
@@ -173,9 +173,9 @@ export function Profile() {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '0.45rem',
-                  background: isFollowing ? '#f8fafc' : '#2563eb',
-                  border: isFollowing ? '1px solid #cbd5e1' : '1px solid #2563eb',
-                  color: isFollowing ? '#334155' : '#fff',
+                  background: isFollowing ? 'var(--surface-soft)' : '#2563eb',
+                  border: isFollowing ? '1px solid var(--border)' : '1px solid #2563eb',
+                  color: isFollowing ? 'var(--text)' : '#fff',
                   borderRadius: '0.75rem',
                   padding: '0.62rem 1rem',
                   fontWeight: 700,
@@ -193,11 +193,11 @@ export function Profile() {
                   alignItems: 'center',
                   gap: '0.45rem',
                   borderRadius: '0.75rem',
-                  border: '1px solid #cbd5e1',
+                  border: '1px solid var(--border)',
                   padding: '0.62rem 1rem',
-                  background: '#fff',
+                  background: 'var(--surface)',
                   textDecoration: 'none',
-                  color: '#0f172a',
+                  color: 'var(--text)',
                   fontWeight: 700,
                 }}
               >
@@ -209,8 +209,8 @@ export function Profile() {
       </header>
 
       <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gap: '2rem' }}>
-        <article style={{ background: '#fff', borderRadius: '2rem', padding: '2.2rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)', display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <div style={{ width: '132px', height: '132px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid #fff', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
+        <article style={{ background: 'var(--surface)', borderRadius: '2rem', padding: '2.2rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)', border: '1px solid var(--border)', display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div style={{ width: '132px', height: '132px', borderRadius: '50%', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid var(--surface)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
             {profile?.avatar_url ? (
               <img src={profile.avatar_url} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} alt="Avatar" />
             ) : (
@@ -222,14 +222,14 @@ export function Profile() {
             <p style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
               {isOwnProfile ? 'Tu perfil' : 'Perfil público'}
             </p>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: '#0f172a', margin: '0 0 0.45rem', letterSpacing: '-0.02em' }}>{profileDisplayName}</h1>
-            <p style={{ color: '#64748b', fontSize: '1rem', margin: '0 0 1rem' }}>@{profileUsername} · {profileEmail}</p>
+            <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--text)', margin: '0 0 0.45rem', letterSpacing: '-0.02em' }}>{profileDisplayName}</h1>
+            <p style={{ color: 'var(--muted)', fontSize: '1rem', margin: '0 0 1rem' }}>@{profileUsername} · {profileEmail}</p>
 
             <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', background: '#eff6ff', color: '#2563eb', borderRadius: '999px', fontSize: '0.84rem', fontWeight: 600 }}>
                 <MapPin size={14} /> {profileCommunity}
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', background: '#f8fafc', color: '#64748b', borderRadius: '999px', fontSize: '0.84rem', fontWeight: 600 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', background: 'var(--surface-soft)', color: 'var(--muted)', borderRadius: '999px', fontSize: '0.84rem', fontWeight: 600 }}>
                 <Shield size={14} /> {profile?.role === 'admin' ? 'Administrador' : 'Miembro'}
               </div>
             </div>
@@ -237,56 +237,56 @@ export function Profile() {
         </article>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '1rem' }}>
-          <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ margin: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '1rem', color: '#0f172a' }}>
+          <section style={{ background: 'var(--surface)', borderRadius: '1.25rem', padding: '1.3rem', border: '1px solid var(--border)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+            <h3 style={{ margin: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '1rem', color: 'var(--text)' }}>
               <TrendingUp size={16} color="#3b82f6" /> Actividad
             </h3>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.6rem' }}>
-              <div style={{ background: '#f8fafc', borderRadius: '0.8rem', padding: '0.8rem' }}>
-                <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>FOTOS</span>
-                <strong style={{ fontSize: '1.3rem', color: '#0f172a' }}>{activity.uploaded}</strong>
+              <div style={{ background: 'var(--surface-soft)', borderRadius: '0.8rem', padding: '0.8rem' }}>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 700 }}>FOTOS</span>
+                <strong style={{ fontSize: '1.3rem', color: 'var(--text)' }}>{activity.uploaded}</strong>
               </div>
-              <div style={{ background: '#f8fafc', borderRadius: '0.8rem', padding: '0.8rem' }}>
-                <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>SIGUIENDO</span>
-                <strong style={{ fontSize: '1.3rem', color: '#0f172a' }}>{followStats.following}</strong>
+              <div style={{ background: 'var(--surface-soft)', borderRadius: '0.8rem', padding: '0.8rem' }}>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 700 }}>SIGUIENDO</span>
+                <strong style={{ fontSize: '1.3rem', color: 'var(--text)' }}>{followStats.following}</strong>
               </div>
-              <div style={{ background: '#f8fafc', borderRadius: '0.8rem', padding: '0.8rem' }}>
-                <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>SEGUIDORES</span>
-                <strong style={{ fontSize: '1.3rem', color: '#0f172a' }}>{followStats.followers}</strong>
+              <div style={{ background: 'var(--surface-soft)', borderRadius: '0.8rem', padding: '0.8rem' }}>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 700 }}>SEGUIDORES</span>
+                <strong style={{ fontSize: '1.3rem', color: 'var(--text)' }}>{followStats.followers}</strong>
               </div>
-              <div style={{ background: '#f8fafc', borderRadius: '0.8rem', padding: '0.8rem' }}>
-                <span style={{ display: 'block', fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>ALTA</span>
-                <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>{formatDate(profile?.created_at)}</strong>
+              <div style={{ background: 'var(--surface-soft)', borderRadius: '0.8rem', padding: '0.8rem' }}>
+                <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--muted)', fontWeight: 700 }}>ALTA</span>
+                <strong style={{ fontSize: '0.9rem', color: 'var(--text)' }}>{formatDate(profile?.created_at)}</strong>
               </div>
             </div>
           </section>
 
-          <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ margin: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '1rem', color: '#0f172a' }}>
+          <section style={{ background: 'var(--surface)', borderRadius: '1.25rem', padding: '1.3rem', border: '1px solid var(--border)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+            <h3 style={{ margin: 0, marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem', fontSize: '1rem', color: 'var(--text)' }}>
               <Calendar size={16} color="#3b82f6" /> Detalles
             </h3>
-            <p style={{ margin: '0 0 0.45rem', color: '#64748b', fontSize: '0.9rem' }}><strong style={{ color: '#0f172a' }}>Usuario:</strong> @{profileUsername}</p>
-            <p style={{ margin: '0 0 0.45rem', color: '#64748b', fontSize: '0.9rem' }}><strong style={{ color: '#0f172a' }}>Comunidad:</strong> {profileCommunity}</p>
-            <p style={{ margin: '0 0 0.45rem', color: '#64748b', fontSize: '0.9rem' }}><strong style={{ color: '#0f172a' }}>Registrado:</strong> {formatDate(profile?.created_at)}</p>
-            <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}><strong style={{ color: '#0f172a' }}>Última foto:</strong> {formatDate(activity.lastPublishedAt)}</p>
+            <p style={{ margin: '0 0 0.45rem', color: 'var(--muted)', fontSize: '0.9rem' }}><strong style={{ color: 'var(--text)' }}>Usuario:</strong> @{profileUsername}</p>
+            <p style={{ margin: '0 0 0.45rem', color: 'var(--muted)', fontSize: '0.9rem' }}><strong style={{ color: 'var(--text)' }}>Comunidad:</strong> {profileCommunity}</p>
+            <p style={{ margin: '0 0 0.45rem', color: 'var(--muted)', fontSize: '0.9rem' }}><strong style={{ color: 'var(--text)' }}>Registrado:</strong> {formatDate(profile?.created_at)}</p>
+            <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}><strong style={{ color: 'var(--text)' }}>Última foto:</strong> {formatDate(activity.lastPublishedAt)}</p>
           </section>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1rem' }}>
-          <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ margin: 0, marginBottom: '1rem', fontSize: '1rem', color: '#0f172a' }}>Seguidores</h3>
+          <section style={{ background: 'var(--surface)', borderRadius: '1.25rem', padding: '1.3rem', border: '1px solid var(--border)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+            <h3 style={{ margin: 0, marginBottom: '1rem', fontSize: '1rem', color: 'var(--text)' }}>Seguidores</h3>
             {followers.length === 0 ? (
-              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>Sin seguidores todavía.</p>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>Sin seguidores todavía.</p>
             ) : (
               <div style={{ display: 'grid', gap: '0.6rem' }}>
                 {followers.map((item) => (
                   <Link key={`follower-${item.id}`} to={user ? `/app/users/${item.id}` : `/users/${item.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {item.avatar_url ? <img src={item.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{(item.username || 'u').charAt(0).toUpperCase()}</span>}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>@{item.username}</p>
-                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.display_name || 'Participante'}</p>
+                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>@{item.username}</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.display_name || 'Participante'}</p>
                     </div>
                   </Link>
                 ))}
@@ -294,20 +294,20 @@ export function Profile() {
             )}
           </section>
 
-          <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
-            <h3 style={{ margin: 0, marginBottom: '1rem', fontSize: '1rem', color: '#0f172a' }}>Siguiendo</h3>
+          <section style={{ background: 'var(--surface)', borderRadius: '1.25rem', padding: '1.3rem', border: '1px solid var(--border)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+            <h3 style={{ margin: 0, marginBottom: '1rem', fontSize: '1rem', color: 'var(--text)' }}>Siguiendo</h3>
             {following.length === 0 ? (
-              <p style={{ margin: 0, color: '#64748b', fontSize: '0.9rem' }}>No sigue a nadie todavía.</p>
+              <p style={{ margin: 0, color: 'var(--muted)', fontSize: '0.9rem' }}>No sigue a nadie todavía.</p>
             ) : (
               <div style={{ display: 'grid', gap: '0.6rem' }}>
                 {following.map((item) => (
                   <Link key={`following-${item.id}`} to={user ? `/app/users/${item.id}` : `/users/${item.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '34px', height: '34px', borderRadius: '50%', overflow: 'hidden', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       {item.avatar_url ? <img src={item.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{(item.username || 'u').charAt(0).toUpperCase()}</span>}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>@{item.username}</p>
-                      <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.display_name || 'Participante'}</p>
+                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>@{item.username}</p>
+                      <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.display_name || 'Participante'}</p>
                     </div>
                   </Link>
                 ))}
@@ -316,27 +316,27 @@ export function Profile() {
           </section>
         </div>
 
-        <section style={{ background: '#fff', borderRadius: '1.25rem', padding: '1.3rem', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
-          <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: '#0f172a', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+        <section style={{ background: 'var(--surface)', borderRadius: '1.25rem', padding: '1.3rem', border: '1px solid var(--border)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.04)' }}>
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text)', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
             <ImageIcon size={18} color="#3b82f6" /> Fotos
           </h3>
 
           {isLoading ? (
-            <p style={{ color: '#64748b', margin: 0 }}>Cargando perfil...</p>
+            <p style={{ color: 'var(--muted)', margin: 0 }}>Cargando perfil...</p>
           ) : userPhotos.length === 0 ? (
-            <p style={{ color: '#64748b', margin: 0 }}>Este usuario aún no ha subido fotografías.</p>
+            <p style={{ color: 'var(--muted)', margin: 0 }}>Este usuario aún no ha subido fotografías.</p>
           ) : (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(190px, 1fr))', gap: '0.85rem' }}>
               {userPhotos.map((photo) => {
                 const photoPath = user ? `/app/photos/${photo.id}` : `/photos/${photo.id}`;
                 return (
-                  <Link key={photo.id} to={photoPath} style={{ textDecoration: 'none', color: 'inherit', borderRadius: '1rem', overflow: 'hidden', border: '1px solid #e2e8f0', background: '#f8fafc' }}>
+                  <Link key={photo.id} to={photoPath} style={{ textDecoration: 'none', color: 'inherit', borderRadius: '1rem', overflow: 'hidden', border: '1px solid var(--border)', background: 'var(--surface-soft)' }}>
                     <img src={photo.image_url} alt={photo.title || 'Fotografía'} style={{ width: '100%', height: '150px', objectFit: 'cover', display: 'block' }} />
                     <div style={{ padding: '0.75rem' }}>
-                      <p style={{ margin: 0, fontSize: '0.86rem', fontWeight: 700, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <p style={{ margin: 0, fontSize: '0.86rem', fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {photo.title || 'Sin título'}
                       </p>
-                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.74rem', color: '#64748b' }}>
+                      <p style={{ margin: '0.25rem 0 0', fontSize: '0.74rem', color: 'var(--muted)' }}>
                         {formatDate(photo.created_at)}
                       </p>
                     </div>

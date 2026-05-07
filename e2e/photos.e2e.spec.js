@@ -10,8 +10,8 @@ import { injectSession, mockSupabaseRoutes } from './helpers.js';
  *  3. Error si se envía sin rellenar el título
  *  4. Error si se envía sin adjuntar imagen
  *  5. El botón cambia a "Subiendo..." durante el procesamiento
- *  6. La página /winners carga contenido visible sin sesión
- *  7. La página /app/winners carga con sesión sin redirigir
+ *  6. La página /contests carga contenido visible sin sesión
+ *  7. La página /app/contests carga con sesión sin redirigir
  */
 
 test.describe('Fotografías — Página de subida', () => {
@@ -114,34 +114,21 @@ test.describe('Fotografías — Página de subida', () => {
 
 test.describe('Fotografías — Página de Ganadores', () => {
 
-  test('La página /winners carga y muestra contenido visible (sin sesión)', async ({ page }) => {
-    await page.route('**/rest/v1/winners**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([]),
-      });
-    });
-    await page.route('**/rest/v1/themes**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([]),
-      });
-    });
+  test('La página /contests carga y muestra contenido visible (sin sesión)', async ({ page }) => {
+    await mockSupabaseRoutes(page);
 
-    await page.goto('/winners');
+    await page.goto('/contests');
 
-    await expect(page).toHaveURL(/\/winners/);
+    await expect(page).toHaveURL(/\/contests/);
     const mainContent = page.locator('h1, h2').first();
     await expect(mainContent).toBeVisible({ timeout: 8_000 });
   });
 
-  test('La página /app/winners es accesible con sesión activa', async ({ page }) => {
+  test('La página /app/contests es accesible con sesión activa', async ({ page }) => {
     await injectSession(page);
     await mockSupabaseRoutes(page);
 
-    await page.goto('/app/winners');
+    await page.goto('/app/contests');
 
     await expect(page).not.toHaveURL(/no-session/);
     await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 10_000 });

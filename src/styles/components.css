@@ -31,14 +31,15 @@
 }
 
 .btn-ghost {
-  background: #fff;
-  border-color: var(--border);
-  color: var(--text);
+  background: var(--btn-ghost-bg);
+  border-color: var(--btn-ghost-border);
+  color: var(--btn-ghost-text);
 }
 
 .btn-ghost:hover {
-  background: var(--surface-soft);
-  border-color: #bfcce0;
+  background: var(--btn-ghost-hover-bg);
+  color: var(--btn-ghost-hover-text);
+  border-color: var(--btn-ghost-hover-border);
 }
 
 .status {

@@ -1,76 +1,37 @@
 // @ts-check
 import { test, expect } from '@playwright/test';
+import { mockSupabaseSessionless } from './helpers.js';
 
 /**
  * Suite E2E: Navegación y rutas
  * Flujos cubiertos:
- *  1. La ruta raíz "/" redirige a /winners (página pública)
- *  2. /winners es accesible sin autenticación y muestra contenido
+ *  1. La ruta raíz "/" redirige a /gallery (página pública)
+ *  2. /contests es accesible sin autenticación y muestra contenido
  *  3. /app/dashboard sin sesión redirige a /no-session
  *  4. Una ruta inexistente muestra la página 404
  *  5. /no-session muestra mensaje de sesión requerida
  *  6. Los enlaces de navegación de la página pública funcionan
  */
 
-// Mock mínimo para que Supabase no lance errores de red
-async function mockSupabaseSessionless(page) {
-  // Sin sesión → devolvemos null
-  await page.route('**/auth/v1/session**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify(null),
-    });
-  });
-
-  await page.route('**/auth/v1/user**', async (route) => {
-    await route.fulfill({
-      status: 401,
-      contentType: 'application/json',
-      body: JSON.stringify({ message: 'Not authenticated' }),
-    });
-  });
-
-  // Mock de winners para que la página pública pueda cargar
-  await page.route('**/rest/v1/winners**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([]),
-    });
-  });
-
-  await page.route('**/rest/v1/themes**', async (route) => {
-    await route.fulfill({
-      status: 200,
-      contentType: 'application/json',
-      body: JSON.stringify([]),
-    });
-  });
-}
-
 // ── tests ─────────────────────────────────────────────────────────────────────
 
 test.describe('Navegación — Rutas públicas', () => {
 
-  test('La raíz "/" redirige a /winners', async ({ page }) => {
+  test('La raíz "/" redirige a /gallery', async ({ page }) => {
     await mockSupabaseSessionless(page);
 
     await page.goto('/');
 
-    // Debe terminar en /winners
-    await expect(page).toHaveURL(/\/winners/, { timeout: 8_000 });
+    await expect(page).toHaveURL(/\/gallery/, { timeout: 8_000 });
   });
 
-  test('/winners carga sin autenticación', async ({ page }) => {
+  test('/contests carga sin autenticación', async ({ page }) => {
     await mockSupabaseSessionless(page);
 
-    await page.goto('/winners');
+    await page.goto('/contests');
 
-    // La URL debe ser /winners y el código HTTP 200 (no redirección de error)
-    await expect(page).toHaveURL(/\/winners/);
+    await expect(page).toHaveURL(/\/contests/);
 
-    // El documento debe tener al menos un h1 o h2
     const heading = page.locator('h1, h2').first();
     await expect(heading).toBeVisible({ timeout: 8_000 });
   });
@@ -80,23 +41,12 @@ test.describe('Navegación — Rutas públicas', () => {
 
     await expect(page).toHaveURL(/\/login/);
     await expect(page.locator('h1')).toContainText('Iniciar sesión');
-    await expect(page.locator('#login-email')).toBeVisible();
-    await expect(page.locator('#login-password')).toBeVisible();
+    await expect(page.locator('input[name="email"]')).toBeVisible();
+    await expect(page.locator('input[name="password"]')).toBeVisible();
   });
 
   test('/register carga el formulario de registro', async ({ page }) => {
-    // Mock de regiones que el Register hace al montar
-    await page.route('**/rest/v1/regions**', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify([
-          { id: 1, name: 'Andalucía' },
-          { id: 2, name: 'Cataluña' },
-          { id: 3, name: 'Madrid' },
-        ]),
-      });
-    });
+    await mockSupabaseSessionless(page);
 
     await page.goto('/register');
 

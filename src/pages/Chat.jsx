@@ -30,6 +30,36 @@ function formatHour(value) {
   return new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
+function parseSharedPhotoMessage(content) {
+  const text = String(content || '');
+  const markerMatch = text.match(/__shared_photo__:(\d+)/);
+  if (markerMatch) {
+    const photoId = parsePositiveInt(markerMatch[1]);
+    const titleMatch = text.match(/📸\s+([^\n]+)/);
+    const linkMatch = text.match(/https?:\/\/[^\s]+\/photos\/\d+/);
+    return {
+      photoId,
+      title: titleMatch?.[1]?.trim() || 'Publicación compartida',
+      url: linkMatch?.[0] || null,
+      path: photoId ? `/photos/${photoId}` : null,
+      plainText: text.replace(/__shared_photo__:\d+\s*/g, '').trim(),
+    };
+  }
+
+  const oldMatch = text.match(/📸\s+([^\n]+)\n(https?:\/\/[^\s]+\/photos\/(\d+))/);
+  if (oldMatch) {
+    return {
+      photoId: parsePositiveInt(oldMatch[3]),
+      title: oldMatch[1].trim(),
+      url: oldMatch[2],
+      path: parsePositiveInt(oldMatch[3]) ? `/photos/${parsePositiveInt(oldMatch[3])}` : null,
+      plainText: text.replace(oldMatch[0], '').trim(),
+    };
+  }
+
+  return null;
+}
+
 export function Chat() {
   const { user } = useAuth();
   const [params, setParams] = useSearchParams();
@@ -49,10 +79,25 @@ export function Chat() {
   const [isMobile, setIsMobile] = useState(() => window.matchMedia('(max-width: 980px)').matches);
   const [mobileScreen, setMobileScreen] = useState('list');
   const [sharedPost, setSharedPost] = useState(null);
+  const [sharedPreviewById, setSharedPreviewById] = useState({});
+  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
 
   const messagesContainerRef = useRef(null);
   const previousMessagesCountRef = useRef(0);
   const activeConversationRef = useRef('');
+  const isDark = theme === 'dark';
+  const colors = useMemo(() => ({
+    pageBg: isDark ? '#0b1220' : '#f8fafc',
+    panelBg: isDark ? '#111b2e' : '#fff',
+    panelSoft: isDark ? '#18253c' : '#f8fafc',
+    border: isDark ? '#2a3a56' : '#e2e8f0',
+    borderSoft: isDark ? '#22314a' : '#f1f5f9',
+    text: isDark ? '#e6eefb' : '#0f172a',
+    muted: isDark ? '#9db0cf' : '#64748b',
+    inputBg: isDark ? '#0f182a' : '#fff',
+    inputDisabledBg: isDark ? '#131f33' : '#f8fafc',
+    incomingBg: isDark ? '#18253c' : '#fff',
+  }), [isDark]);
 
   const refreshContacts = useCallback(
     async ({ showLoader = false } = {}) => {
@@ -247,6 +292,51 @@ export function Chat() {
     };
   }, [search, currentUserId]);
 
+  useEffect(() => {
+    const onThemeChange = (event) => {
+      const next = event?.detail || document.documentElement.getAttribute('data-theme') || 'light';
+      setTheme(next);
+    };
+    window.addEventListener('snapnation:theme-change', onThemeChange);
+    return () => window.removeEventListener('snapnation:theme-change', onThemeChange);
+  }, []);
+
+  useEffect(() => {
+    const ids = new Set();
+    messages.forEach((message) => {
+      const parsed = parseSharedPhotoMessage(message?.content);
+      if (parsed?.photoId && !sharedPreviewById[parsed.photoId]) ids.add(parsed.photoId);
+    });
+    if (ids.size === 0) return;
+
+    let cancelled = false;
+    async function loadMissingSharedPreviews() {
+      const entries = await Promise.all(
+        [...ids].map(async (id) => {
+          try {
+            const post = await getSubmissionById(id);
+            return [id, post || null];
+          } catch {
+            return [id, null];
+          }
+        })
+      );
+      if (cancelled) return;
+      setSharedPreviewById((prev) => {
+        const next = { ...prev };
+        entries.forEach(([id, post]) => {
+          next[id] = post;
+        });
+        return next;
+      });
+    }
+
+    loadMissingSharedPreviews();
+    return () => {
+      cancelled = true;
+    };
+  }, [messages, sharedPreviewById]);
+
   const handleSelectUser = (profile) => {
     if (!profile?.id) return;
     setSelectedUser(profile);
@@ -272,7 +362,7 @@ export function Chat() {
     const normalized = draft.trim();
     const sharedLink = sharePhotoId ? `${window.location.origin}/photos/${sharePhotoId}` : '';
     const sharedCaption = sharedPost?.title ? `📸 ${sharedPost.title}` : '📸 Mira esta publicación';
-    const sharePayload = sharePhotoId ? `${sharedCaption}\n${sharedLink}` : '';
+    const sharePayload = sharePhotoId ? `__shared_photo__:${sharePhotoId}\n${sharedCaption}\n${sharedLink}` : '';
     const messageToSend = normalized && sharePayload ? `${normalized}\n\n${sharePayload}` : (normalized || sharePayload);
     if (!messageToSend.trim()) return;
 
@@ -298,7 +388,7 @@ export function Chat() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '1.5rem', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ minHeight: '100vh', background: colors.pageBg, padding: '1.5rem', fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         .chat-grid {
           display: grid;
@@ -334,20 +424,20 @@ export function Chat() {
         }
       `}</style>
       <header style={{ maxWidth: '1160px', margin: '0 auto 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <Link to="/app/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', color: '#64748b', textDecoration: 'none', fontWeight: 700 }}>
+        <Link to="/app/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', color: colors.muted, textDecoration: 'none', fontWeight: 700 }}>
           <ArrowLeft size={18} /> Volver al panel
         </Link>
-        <h1 style={{ margin: 0, fontSize: '1.4rem', color: '#0f172a' }}>Chat</h1>
+        <h1 style={{ margin: 0, fontSize: '1.4rem', color: colors.text }}>Chat</h1>
       </header>
 
       <section className="chat-grid" style={{ maxWidth: '1160px', margin: '0 auto' }}>
-        <aside className={`chat-sidebar ${isMobile && mobileScreen === 'chat' ? 'mobile-hidden' : ''}`} style={{ background: '#fff', borderRadius: '1rem', border: '1px solid #e2e8f0', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)' }}>
+        <aside className={`chat-sidebar ${isMobile && mobileScreen === 'chat' ? 'mobile-hidden' : ''}`} style={{ background: colors.panelBg, borderRadius: '1rem', border: `1px solid ${colors.border}`, overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto auto minmax(0, 1fr)' }}>
           {isMobile && (
-            <div style={{ padding: '0.8rem 1rem 0.4rem', borderBottom: '1px solid #f1f5f9' }}>
-              <p style={{ margin: 0, fontWeight: 900, color: '#0f172a' }}>Mensajes</p>
+            <div style={{ padding: '0.8rem 1rem 0.4rem', borderBottom: `1px solid ${colors.borderSoft}` }}>
+              <p style={{ margin: 0, fontWeight: 900, color: colors.text }}>Mensajes</p>
             </div>
           )}
-          <div style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9', minHeight: '76px', boxSizing: 'border-box' }}>
+          <div style={{ padding: '1rem', borderBottom: `1px solid ${colors.borderSoft}`, minHeight: '76px', boxSizing: 'border-box' }}>
             <div style={{ position: 'relative' }}>
               <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
               <input
@@ -355,13 +445,13 @@ export function Chat() {
                 placeholder="Buscar usuarios..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', border: '1px solid #cbd5e1', borderRadius: '0.65rem', padding: '0.55rem 0.7rem 0.55rem 2rem', outline: 'none' }}
+                style={{ width: '100%', boxSizing: 'border-box', border: `1px solid ${colors.border}`, borderRadius: '0.65rem', padding: '0.55rem 0.7rem 0.55rem 2rem', outline: 'none', background: colors.inputBg, color: colors.text }}
               />
             </div>
           </div>
 
           {searchResults.length > 0 && (
-            <div style={{ borderBottom: '1px solid #f1f5f9', padding: '0.6rem 0.8rem', display: 'grid', gap: '0.35rem', maxHeight: '180px', overflowY: 'auto' }}>
+            <div style={{ borderBottom: `1px solid ${colors.borderSoft}`, padding: '0.6rem 0.8rem', display: 'grid', gap: '0.35rem', maxHeight: '180px', overflowY: 'auto' }}>
               {searchResults.map((candidate) => (
                 <button
                   key={`search-${candidate.id}`}
@@ -372,8 +462,8 @@ export function Chat() {
                     alignItems: 'center',
                     gap: '0.5rem',
                     textAlign: 'left',
-                    border: '1px solid #e2e8f0',
-                    background: '#fff',
+                    border: `1px solid ${colors.border}`,
+                    background: colors.panelSoft,
                     borderRadius: '0.6rem',
                     padding: '0.5rem',
                     cursor: 'pointer',
@@ -383,8 +473,8 @@ export function Chat() {
                     {candidate.avatar_url ? <img src={candidate.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{getUserName(candidate).charAt(0).toUpperCase()}</span>}
                   </div>
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{getUserName(candidate)}</p>
-                    <p style={{ margin: 0, fontSize: '0.72rem', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{candidate.display_name || 'Participante'}</p>
+                    <p style={{ margin: 0, fontSize: '0.82rem', fontWeight: 700, color: colors.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{getUserName(candidate)}</p>
+                    <p style={{ margin: 0, fontSize: '0.72rem', color: colors.muted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{candidate.display_name || 'Participante'}</p>
                   </div>
                 </button>
               ))}
@@ -414,8 +504,8 @@ export function Chat() {
                       alignItems: 'center',
                       gap: '0.65rem',
                       border: 'none',
-                      borderBottom: '1px solid #f8fafc',
-                      background: active ? '#eff6ff' : '#fff',
+                      borderBottom: `1px solid ${colors.borderSoft}`,
+                      background: active ? (isDark ? '#213252' : '#eff6ff') : colors.panelBg,
                       padding: '0.75rem 0.8rem',
                       cursor: 'pointer',
                       textAlign: 'left',
@@ -425,8 +515,8 @@ export function Chat() {
                       {contact.avatar_url ? <img src={contact.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{getUserName(contact).charAt(0).toUpperCase()}</span>}
                     </div>
                     <div style={{ minWidth: 0 }}>
-                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{getUserName(contact)}</p>
-                      <p style={{ margin: '0.1rem 0 0', fontSize: '0.73rem', color: '#64748b' }}>{formatHour(contact.last_interaction_at)}</p>
+                      <p style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, color: colors.text, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>@{getUserName(contact)}</p>
+                      <p style={{ margin: '0.1rem 0 0', fontSize: '0.73rem', color: colors.muted }}>{formatHour(contact.last_interaction_at)}</p>
                     </div>
                   </button>
                 );
@@ -435,8 +525,8 @@ export function Chat() {
           </div>
         </aside>
 
-        <article className={`chat-main ${isMobile && mobileScreen !== 'chat' ? 'mobile-hidden' : ''}`} style={{ background: '#fff', borderRadius: '1rem', border: '1px solid #e2e8f0', display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', height: '100%' }}>
-          <header style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', minHeight: '76px', boxSizing: 'border-box' }}>
+        <article className={`chat-main ${isMobile && mobileScreen !== 'chat' ? 'mobile-hidden' : ''}`} style={{ background: colors.panelBg, borderRadius: '1rem', border: `1px solid ${colors.border}`, display: 'grid', gridTemplateRows: 'auto minmax(0, 1fr) auto', height: '100%' }}>
+          <header style={{ padding: '1rem', borderBottom: `1px solid ${colors.borderSoft}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.6rem', minHeight: '76px', boxSizing: 'border-box' }}>
             {selectedUser ? (
               <>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
@@ -454,8 +544,8 @@ export function Chat() {
                     {selectedUser.avatar_url ? <img src={selectedUser.avatar_url} alt="Avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span style={{ fontWeight: 700, color: '#475569' }}>{getUserName(selectedUser).charAt(0).toUpperCase()}</span>}
                   </div>
                   <div>
-                    <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: '#0f172a' }}>@{getUserName(selectedUser)}</p>
-                    <p style={{ margin: 0, fontSize: '0.74rem', color: '#64748b' }}>{selectedUser.display_name || 'Participante'}</p>
+                    <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 800, color: colors.text }}>@{getUserName(selectedUser)}</p>
+                    <p style={{ margin: 0, fontSize: '0.74rem', color: colors.muted }}>{selectedUser.display_name || 'Participante'}</p>
                   </div>
                 </div>
                 <Link to={`/app/users/${selectedUser.id}`} style={{ textDecoration: 'none', color: '#2563eb', fontSize: '0.84rem', fontWeight: 700 }}>
@@ -467,7 +557,7 @@ export function Chat() {
             )}
           </header>
 
-          <div ref={messagesContainerRef} className="chat-messages" style={{ padding: '1rem', overflowY: 'auto', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+          <div ref={messagesContainerRef} className="chat-messages" style={{ padding: '1rem', overflowY: 'auto', background: colors.panelSoft, display: 'flex', flexDirection: 'column' }}>
             {!selectedUser ? (
               <div style={{ height: '100%', display: 'grid', placeItems: 'center', color: '#64748b' }}>
                 <div style={{ textAlign: 'center' }}>
@@ -483,10 +573,46 @@ export function Chat() {
               <div style={{ display: 'grid', gap: '0.5rem' }}>
                 {messages.map((message) => {
                   const mine = message.sender_id === currentUserId;
+                  const shared = parseSharedPhotoMessage(message.content);
+                  const sharedPreview = shared?.photoId ? sharedPreviewById[shared.photoId] : null;
                   return (
                     <div key={message.id} style={{ display: 'flex', justifyContent: mine ? 'flex-end' : 'flex-start' }}>
-                      <div style={{ maxWidth: '75%', background: mine ? '#2563eb' : '#fff', color: mine ? '#fff' : '#0f172a', border: mine ? '1px solid #2563eb' : '1px solid #e2e8f0', borderRadius: '0.85rem', padding: '0.55rem 0.7rem' }}>
-                        <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>{message.content}</p>
+                      <div style={{ maxWidth: '75%', background: mine ? '#2563eb' : colors.incomingBg, color: mine ? '#fff' : colors.text, border: mine ? '1px solid #2563eb' : `1px solid ${colors.border}`, borderRadius: '0.85rem', padding: '0.55rem 0.7rem' }}>
+                        {shared ? (
+                          <div style={{ display: 'grid', gap: '0.45rem' }}>
+                            {shared.plainText && (
+                              <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>{shared.plainText}</p>
+                            )}
+                            <Link
+                              to={shared.path || `/photos/${shared.photoId}`}
+                              style={{
+                                textDecoration: 'none',
+                                color: mine ? '#fff' : '#0f172a',
+                                background: mine ? 'rgba(255,255,255,0.14)' : '#f8fafc',
+                                border: mine ? '1px solid rgba(255,255,255,0.26)' : '1px solid #e2e8f0',
+                                borderRadius: '0.8rem',
+                                overflow: 'hidden',
+                                display: 'grid',
+                              }}
+                            >
+                              {sharedPreview?.image_url && (
+                                <img
+                                  src={sharedPreview.image_url}
+                                  alt={shared.title}
+                                  style={{ width: '100%', height: '170px', objectFit: 'cover', display: 'block' }}
+                                />
+                              )}
+                              <div style={{ padding: '0.55rem 0.65rem' }}>
+                                <p style={{ margin: 0, fontSize: '0.92rem', fontWeight: 800 }}>📸 {shared.title}</p>
+                                <p style={{ margin: '0.15rem 0 0', fontSize: '0.72rem', opacity: mine ? 0.85 : 0.6 }}>
+                                  Ver publicación
+                                </p>
+                              </div>
+                            </Link>
+                          </div>
+                        ) : (
+                          <p style={{ margin: 0, fontSize: '0.9rem', lineHeight: 1.35, whiteSpace: 'pre-wrap' }}>{message.content}</p>
+                        )}
                         <p style={{ margin: '0.25rem 0 0', fontSize: '0.68rem', opacity: mine ? 0.8 : 0.55, textAlign: 'right' }}>{formatHour(message.created_at)}</p>
                       </div>
                     </div>
@@ -496,7 +622,7 @@ export function Chat() {
             )}
           </div>
 
-          <form onSubmit={handleSend} style={{ borderTop: '1px solid #f1f5f9', padding: '0.8rem', display: 'grid', gap: '0.5rem' }}>
+          <form onSubmit={handleSend} style={{ borderTop: `1px solid ${colors.borderSoft}`, padding: '0.8rem', display: 'grid', gap: '0.5rem' }}>
             {sharedPost && (
               <div style={{ background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '0.7rem', padding: '0.45rem 0.6rem', display: 'flex', alignItems: 'center', gap: '0.5rem', maxWidth: '100%' }}>
                 <span style={{ fontSize: '0.76rem', color: '#1e3a8a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
@@ -517,11 +643,12 @@ export function Chat() {
                 maxLength={2000}
                 style={{
                   flex: 1,
-                  border: '1px solid #cbd5e1',
+                  border: `1px solid ${colors.border}`,
                   borderRadius: '0.7rem',
                   padding: '0.65rem 0.8rem',
                   outline: 'none',
-                  background: !selectedUser ? '#f8fafc' : '#fff',
+                  background: !selectedUser ? colors.inputDisabledBg : colors.inputBg,
+                  color: colors.text,
                 }}
               />
               <button

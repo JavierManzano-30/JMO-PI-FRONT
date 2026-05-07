@@ -18,12 +18,12 @@ import { uploadImage } from '../services/supabaseService';
 
 const tokens = {
   colors: {
-    bg: '#ffffff',
-    card: '#f8fafc',
+    bg: 'var(--bg-page)',
+    card: 'var(--surface)',
     accent: '#2563eb',
-    text: '#0f172a',
-    textMuted: '#64748b',
-    border: '#e2e8f0',
+    text: 'var(--text)',
+    textMuted: 'var(--muted)',
+    border: 'var(--border)',
     success: '#10b981',
     warning: '#f59e0b'
   },
@@ -43,7 +43,7 @@ const s = {
     fontFamily: tokens.fonts.display,
   },
   avatarCard: {
-    background: '#fff',
+    background: tokens.colors.card,
     borderRadius: '2rem',
     padding: '3rem 2rem',
     textAlign: 'center',
@@ -57,9 +57,9 @@ const s = {
     borderRadius: '50%',
     margin: '0 auto 1.5rem',
     overflow: 'hidden',
-    border: `6px solid #f1f5f9`,
+    border: `6px solid var(--surface-soft)`,
     position: 'relative',
-    background: '#f8fafc',
+    background: 'var(--surface-soft)',
   },
   image: {
     width: '100%',
@@ -91,6 +91,8 @@ const s = {
     padding: '1rem 1.5rem',
     borderRadius: '1rem',
     border: `2px solid ${tokens.colors.border}`,
+    background: 'var(--surface-soft)',
+    color: 'var(--text)',
     fontSize: '1rem',
     fontWeight: 500,
     outline: 'none',
@@ -98,7 +100,7 @@ const s = {
   },
   badge: {
     padding: '0.75rem 1.25rem',
-    background: '#fff',
+    background: 'var(--surface-soft)',
     borderRadius: '1rem',
     border: `1px solid ${tokens.colors.border}`,
     display: 'flex',
@@ -109,7 +111,7 @@ const s = {
     boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
   },
   btnSave: {
-    background: '#000',
+    background: '#0b1324',
     color: '#fff',
     padding: '1.25rem 2.5rem',
     borderRadius: '1rem',
@@ -125,7 +127,7 @@ const s = {
   },
   regionRequest: {
     marginTop: '1.5rem',
-    background: 'rgba(37, 99, 235, 0.03)',
+    background: 'rgba(37, 99, 235, 0.08)',
     borderRadius: '1.5rem',
     padding: '1.5rem',
     border: `1px dashed ${tokens.colors.accent}`,
@@ -235,10 +237,10 @@ export function ProfileEdit() {
     }
   };
 
-  if (loading) return <div style={{ textAlign: 'center', padding: '10rem' }}>Cargando datos maestros...</div>;
+  if (loading) return <div style={{ textAlign: 'center', padding: '10rem', color: 'var(--text)' }}>Cargando datos maestros...</div>;
 
   return (
-    <div style={{ background: '#fff', minHeight: '100vh' }}>
+    <div style={{ background: 'var(--bg-page)', minHeight: '100vh', color: 'var(--text)' }}>
       <nav style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem 1.5rem' }}>
         <button onClick={() => navigate('/app/profile')} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, cursor: 'pointer', color: tokens.colors.textMuted }}>
           <ChevronLeft size={20} /> Volver al panel
@@ -270,7 +272,7 @@ export function ProfileEdit() {
             label:hover .avatar-overlay { opacity: 1 !important; }
           `}</style>
 
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 0.5rem' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 0.5rem', color: 'var(--text)' }}>
             {profileData.username ? `@${profileData.username.toLowerCase().replace(/\s/g, '')}` : 'Configura tu usuario'}
           </h2>
           <p style={{ fontSize: '0.875rem', color: tokens.colors.textMuted, margin: 0 }}>Visualiza cómo te verán los demás.</p>
@@ -299,7 +301,7 @@ export function ProfileEdit() {
               />
             </div>
 
-            <div style={{ borderTop: '1px solid #e2e8f0', margin: '2rem 0', pt: '2rem' }} />
+            <div style={{ borderTop: '1px solid var(--border)', margin: '2rem 0', pt: '2rem' }} />
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
               <div style={s.badge}>
@@ -343,7 +345,7 @@ export function ProfileEdit() {
                     <label style={{ 
                       display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem',
                       padding: '1.25rem', border: `2px dashed ${tokens.colors.accent}`, borderRadius: '1rem',
-                      cursor: 'pointer', background: '#fff', color: tokens.colors.accent, fontWeight: 700
+                      cursor: 'pointer', background: 'var(--surface-soft)', color: tokens.colors.accent, fontWeight: 700
                     }}>
                       <FileUp size={20} />
                       {docPreview ? docPreview : 'Seleccionar Documento'}
@@ -361,7 +363,7 @@ export function ProfileEdit() {
             )}
           </div>
 
-          <div style={{ background: 'rgba(37, 99, 235, 0.05)', padding: '1.5rem', borderRadius: '1.5rem', border: `1px solid rgba(37, 99, 235, 0.1)` }}>
+          <div style={{ background: 'rgba(37, 99, 235, 0.1)', padding: '1.5rem', borderRadius: '1.5rem', border: `1px solid rgba(37, 99, 235, 0.25)` }}>
             <p style={{ fontSize: '0.9rem', color: tokens.colors.accent, lineHeight: 1.6, margin: 0 }}>
               <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Recordatorio:</strong> 
               Los cambios que realices aquí se verán reflejados inmediatamente en todas tus fotografías publicadas y en tus votos activos.

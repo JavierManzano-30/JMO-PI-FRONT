@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
 import { getSubmissionById, getComments, addComment, deleteComment } from '../services/supabaseService';
-import { 
+import {
   Heart, 
   MessageSquare, 
   Share2, 
@@ -18,14 +18,16 @@ import {
   Send
 } from 'lucide-react';
 
+const MAX_COMMENT_LENGTH = 280;
+
 const tokens = {
   colors: {
-    bg: '#ffffff',
-    card: '#f8fafc',
-    accent: '#2563eb',
-    text: '#0f172a',
-    textMuted: '#64748b',
-    border: '#e2e8f0',
+    bg: 'var(--bg-page)',
+    card: 'var(--surface-soft)',
+    accent: 'var(--primary)',
+    text: 'var(--text)',
+    textMuted: 'var(--muted)',
+    border: 'var(--border)',
     danger: '#ef4444'
   },
   fonts: {
@@ -56,7 +58,7 @@ const s = {
     alignItems: 'start',
   },
   imageBox: {
-    background: '#000',
+    background: '#0a1020',
     borderRadius: '2rem',
     overflow: 'hidden',
     boxShadow: '0 40px 100px -20px rgba(0,0,0,0.1)',
@@ -81,8 +83,8 @@ const s = {
     alignItems: 'center',
     gap: '0.4rem',
     padding: '0.4rem 1rem',
-    background: '#eff6ff',
-    color: '#2563eb',
+    background: 'var(--primary-soft)',
+    color: 'var(--primary)',
     borderRadius: '999px',
     fontSize: '0.75rem',
     fontWeight: 800,
@@ -116,7 +118,7 @@ const s = {
     flex: 1,
     padding: '1.25rem',
     borderRadius: '1rem',
-    background: '#000',
+    background: '#111b2e',
     color: '#fff',
     border: 'none',
     fontWeight: 700,
@@ -141,11 +143,22 @@ export function PhotoDetail() {
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
   const rawBackendUserId = user?.backendId ?? user?.id;
   const backendUserId = typeof rawBackendUserId === 'number'
     ? (Number.isInteger(rawBackendUserId) && rawBackendUserId > 0 ? rawBackendUserId : null)
     : (typeof rawBackendUserId === 'string' && /^\d+$/.test(rawBackendUserId) ? Number(rawBackendUserId) : null);
   const canWriteData = Number.isInteger(backendUserId) && backendUserId > 0;
+  const isDark = theme === 'dark';
+
+  useEffect(() => {
+    const onThemeChange = (event) => {
+      const next = event?.detail || document.documentElement.getAttribute('data-theme') || 'light';
+      setTheme(next);
+    };
+    window.addEventListener('snapnation:theme-change', onThemeChange);
+    return () => window.removeEventListener('snapnation:theme-change', onThemeChange);
+  }, []);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -449,7 +462,7 @@ export function PhotoDetail() {
             <button
               type="button"
               onClick={handleShare}
-              style={{ ...s.btnMain, background: 'transparent', border: `1px solid ${tokens.colors.border}`, color: '#000', flex: 0.2 }}
+              style={{ ...s.btnMain, background: 'transparent', border: `1px solid ${tokens.colors.border}`, color: isDark ? '#fff' : '#000', flex: 0.2 }}
             >
               <Share2 size={20} />
             </button>
@@ -475,7 +488,8 @@ export function PhotoDetail() {
                 <input 
                   type="text" 
                   value={newComment}
-                  onChange={(e) => setNewComment(e.target.value)}
+                  onChange={(e) => setNewComment(e.target.value.slice(0, MAX_COMMENT_LENGTH))}
+                  maxLength={MAX_COMMENT_LENGTH}
                   placeholder={user ? "Escribe algo sobre esta obra..." : "Inicia sesión para comentar..."}
                   style={{ 
                     flex: 1, padding: '1rem 1.5rem', borderRadius: '1rem', 
@@ -503,6 +517,9 @@ export function PhotoDetail() {
                   <Send size={20} />
                 </button>
               </form>
+              <div style={{ marginTop: '0.45rem', textAlign: 'right', fontSize: '0.72rem', color: tokens.colors.textMuted }}>
+                {newComment.length}/{MAX_COMMENT_LENGTH}
+              </div>
               {!user && <div style={{ position: 'absolute', top: '50%', left: '5%', right: '5%', height: '2px', background: '#94a3b8', transform: 'rotate(-2deg)', pointerEvents: 'none', opacity: 0.6 }} />}
             </div>
             

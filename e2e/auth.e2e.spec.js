@@ -2,6 +2,9 @@
 import { test, expect } from '@playwright/test';
 import { injectSession, mockSupabaseRoutes, fakeSession } from './helpers.js';
 
+const emailInput = 'input[name="email"]';
+const passwordInput = 'input[name="password"]';
+
 /**
  * Suite E2E: Autenticación
  * Flujos cubiertos:
@@ -19,8 +22,8 @@ test.describe('Autenticación — Formulario de Login', () => {
     await page.goto('/login');
 
     await expect(page.locator('h1')).toContainText('Iniciar sesión');
-    await expect(page.locator('#login-email')).toBeVisible();
-    await expect(page.locator('#login-password')).toBeVisible();
+    await expect(page.locator(emailInput)).toBeVisible();
+    await expect(page.locator(passwordInput)).toBeVisible();
     await expect(page.locator('button[type="submit"]')).toBeVisible();
   });
 
@@ -39,8 +42,8 @@ test.describe('Autenticación — Formulario de Login', () => {
 
     await page.goto('/login');
 
-    await page.fill('#login-email', 'e2e@snapnation.test');
-    await page.fill('#login-password', 'contraseñaSegura123');
+    await page.fill(emailInput, 'e2e@snapnation.test');
+    await page.fill(passwordInput, 'contraseñaSegura123');
     await page.click('button[type="submit"]');
 
     await expect(page).toHaveURL(/\/app\/dashboard/, { timeout: 12_000 });
@@ -57,8 +60,8 @@ test.describe('Autenticación — Formulario de Login', () => {
 
     await page.goto('/login');
 
-    await page.fill('#login-email', 'mal@test.com');
-    await page.fill('#login-password', 'clave-incorrecta');
+    await page.fill(emailInput, 'mal@test.com');
+    await page.fill(passwordInput, 'clave-incorrecta');
     await page.click('button[type="submit"]');
 
     const errorAlert = page.locator('[role="alert"]');
@@ -84,8 +87,8 @@ test.describe('Autenticación — Formulario de Login', () => {
     });
 
     await page.goto('/login');
-    await page.fill('#login-email', 'demo@test.com');
-    await page.fill('#login-password', '12345678');
+    await page.fill(emailInput, 'demo@test.com');
+    await page.fill(passwordInput, '12345678');
 
     await page.click('button[type="submit"]');
     await expect(page.locator('button[type="submit"]')).toContainText('Validando...', { timeout: 2_000 });

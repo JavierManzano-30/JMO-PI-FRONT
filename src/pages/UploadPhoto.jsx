@@ -29,7 +29,7 @@ const MAX_DESCRIPTION_LENGTH = 500;
 const s = {
   container: {
     minHeight: '100vh',
-    background: '#fafafa',
+    background: 'var(--bg-page)',
     padding: '2rem',
     display: 'flex',
     justifyContent: 'center',
@@ -38,21 +38,21 @@ const s = {
   card: {
     width: '100%',
     maxWidth: '64rem',
-    background: '#fff',
+    background: 'var(--surface)',
     borderRadius: '2rem',
-    boxShadow: '0 20px 50px -12px rgba(0,0,0,0.05)',
+    boxShadow: 'var(--shadow-panel)',
     display: 'flex',
     overflow: 'hidden',
   },
   formSection: {
     flex: 1,
     padding: '3rem',
-    borderRight: '1px solid #f1f5f9',
+    borderRight: '1px solid var(--border)',
   },
   previewSection: {
     width: '35%',
     padding: '3rem',
-    background: '#f8fafc',
+    background: 'var(--surface-soft)',
     display: 'flex',
     flexDirection: 'column',
     gap: '2rem',
@@ -67,7 +67,7 @@ const s = {
     letterSpacing: '-0.02em',
   },
   subtitle: {
-    color: '#64748b',
+    color: 'var(--muted)',
     marginTop: '0.5rem',
     fontSize: '0.875rem',
   },
@@ -86,7 +86,7 @@ const s = {
     fontWeight: 700,
     textTransform: 'uppercase',
     letterSpacing: '0.05em',
-    color: '#94a3b8',
+    color: 'var(--muted)',
     display: 'flex',
     alignItems: 'center',
     gap: '0.5rem',
@@ -94,17 +94,20 @@ const s = {
   input: {
     padding: '0.875rem 1rem',
     borderRadius: '0.75rem',
-    border: '2px solid #e2e8f0',
+    border: '2px solid var(--border)',
     fontSize: '0.875rem',
+    background: 'var(--input-bg)',
+    color: 'var(--text)',
     outline: 'none',
     transition: 'border-color 0.2s',
   },
   select: {
     padding: '0.875rem 1rem',
     borderRadius: '0.75rem',
-    border: '2px solid #e2e8f0',
+    border: '2px solid var(--border)',
     fontSize: '0.875rem',
-    background: '#fff',
+    background: 'var(--input-bg)',
+    color: 'var(--text)',
     outline: 'none',
   },
   dropzone: (hasFile, isDragging) => ({
@@ -112,7 +115,7 @@ const s = {
     borderRadius: '1.25rem',
     padding: hasFile ? '4px' : '2.5rem',
     textAlign: 'center',
-    background: isDragging ? 'rgba(37,99,235,0.05)' : (hasFile ? 'rgba(59,130,246,0.02)' : '#fff'),
+    background: isDragging ? 'rgba(37,99,235,0.12)' : (hasFile ? 'rgba(59,130,246,0.08)' : 'var(--input-bg)'),
     cursor: 'pointer',
     transition: 'all 0.2s',
     transform: isDragging ? 'scale(1.02)' : 'scale(1)',
@@ -282,18 +285,18 @@ export function UploadPhoto() {
           display: flex;
           flex-direction: column;
           gap: 1.5rem;
-          background: #fff;
+          background: var(--surface);
           padding: 1.5rem;
           border-radius: 1.25rem;
-          border: 1px solid #e2e8f0;
-          box-shadow: 0 8px 20px -12px rgba(15, 23, 42, 0.22);
+          border: 1px solid var(--border);
+          box-shadow: var(--shadow-soft);
         }
 
         .upload-preview-title {
           margin: 0.25rem 0;
           font-size: 1.125rem;
           font-weight: 800;
-          color: #0f172a;
+          color: var(--text);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -391,7 +394,7 @@ export function UploadPhoto() {
               <label style={s.label}>Descripción</label>
               <textarea 
                 className="upload-input"
-                style={{ ...s.input, minHeight: '80px', resize: 'vertical' }} 
+                style={{ ...s.input, minHeight: '140px', maxHeight: '140px', resize: 'none', overflowY: 'auto' }} 
                 placeholder="¿Qué te inspiró a tomar esta foto?"
                 value={formData.description}
                 onChange={e => setFormData(p => ({ ...p, description: e.target.value.slice(0, MAX_DESCRIPTION_LENGTH) }))}
