@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Camera,
@@ -58,6 +58,7 @@ const s = {
     zIndex: 10,
     display: 'flex',
     alignItems: 'center',
+    alignSelf: 'flex-start',
     gap: '0.75rem',
   },
   logoBox: {
@@ -117,7 +118,7 @@ const s = {
   },
   /* ── lado derecho ── */
   right: {
-    width: '50%',
+    width: '100%',
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'center',
@@ -280,8 +281,14 @@ const s = {
 export function Register() {
   const { register } = useAuth();
   const navigate = useNavigate();
+  const THEME_STORAGE_KEY = 'snapnation:theme';
 
-  const [dark, setDark] = useState(false);
+  const [dark, setDark] = useState(() => {
+    const stored = localStorage.getItem(THEME_STORAGE_KEY);
+    if (stored === 'dark') return true;
+    if (stored === 'light') return false;
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   const [showPwd, setShowPwd] = useState(false);
   const [showConfirmPwd, setShowConfirmPwd] = useState(false);
   const [status, setStatus] = useState('idle');
@@ -307,6 +314,14 @@ export function Register() {
     loadRegions();
   }, []);
   const [focusedField, setFocusedField] = useState(null);
+
+  useEffect(() => {
+    const nextTheme = dark ? 'dark' : 'light';
+    document.documentElement.setAttribute('data-theme', nextTheme);
+    document.documentElement.style.colorScheme = nextTheme;
+    localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+    window.dispatchEvent(new CustomEvent('snapnation:theme-change', { detail: nextTheme }));
+  }, [dark]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -385,7 +400,21 @@ export function Register() {
         <div style={s.overlay(dark)} />
 
         <div style={s.logo}>
-          <img src={logoSrc} alt="SnapNation" height="140" style={{ display: 'block', objectFit: 'contain', filter: dark ? 'brightness(0) invert(1) drop-shadow(0px 2px 8px rgba(0,0,0,0.5))' : 'drop-shadow(0px 2px 4px rgba(0,0,0,0.5))', transition: 'filter 0.3s' }} />
+          <img
+            src={logoSrc}
+            alt="SnapNation"
+            height="88"
+            style={{
+              display: 'block',
+              width: '190px',
+              maxWidth: '100%',
+              objectFit: 'contain',
+              objectPosition: 'left top',
+              filter: 'drop-shadow(0px 1px 3px rgba(0,0,0,0.42))',
+              transition: 'filter 0.3s',
+              opacity: 0.95,
+            }}
+          />
         </div>
 
         <div style={s.leftBottom}>
@@ -551,8 +580,14 @@ export function Register() {
           </p>
 
           <div style={s.legalBar}>
-            {['Privacidad', 'Términos', 'Soporte'].map((t) => (
-              <a key={t} href="#" style={s.legalLink}>{t}</a>
+            {[
+              { label: 'Privacidad', to: '/privacy-policy' },
+              { label: 'Términos', to: '/legal-notice' },
+              { label: 'Soporte', to: '/soporte' },
+            ].map((item) => (
+              <Link key={item.label} to={item.to} style={s.legalLink}>
+                {item.label}
+              </Link>
             ))}
           </div>
         </footer>

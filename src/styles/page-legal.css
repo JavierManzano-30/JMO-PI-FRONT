@@ -66,11 +66,11 @@
 }
 
 .legal-card-glass {
-  background: #ffffff;
+  background: var(--surface);
   border: 1px solid var(--border, #d9e1ee);
   border-radius: 24px;
   padding: 3rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+  box-shadow: var(--shadow-soft);
 }
 
 .legal-block {
@@ -84,8 +84,8 @@
 .legal-icon-wrap {
   width: 48px;
   height: 48px;
-  background: #f0f7ff;
-  color: #2563eb;
+  background: var(--primary-soft);
+  color: var(--primary);
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -104,14 +104,14 @@
 }
 
 .legal-block h2 {
-  color: #1e293b;
+  color: var(--text);
   font-size: 1.5rem;
   font-weight: 700;
   margin-bottom: 1rem;
 }
 
 .legal-block p {
-  color: #475569;
+  color: var(--muted);
   line-height: 1.7;
   margin-bottom: 1rem;
 }
@@ -122,7 +122,7 @@
 }
 
 .legal-block li {
-  color: #475569;
+  color: var(--muted);
   padding: 0.5rem 0;
   padding-left: 1.5rem;
   position: relative;
@@ -132,7 +132,21 @@
   content: "→";
   position: absolute;
   left: 0;
-  color: #38bdf8;
+  color: var(--primary);
+}
+
+html[data-theme='dark'] .legal-hero {
+  background: linear-gradient(135deg, #070c17 0%, #101a31 100%);
+}
+
+html[data-theme='dark'] .legal-card-glass {
+  background: var(--surface-soft);
+  border-color: var(--border);
+}
+
+html[data-theme='dark'] .legal-icon-wrap {
+  background: rgba(126, 168, 255, 0.18);
+  color: #9ec0ff;
 }
 
 @media (max-width: 768px) {

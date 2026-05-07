@@ -27,6 +27,7 @@ const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx').then((m) 
 const LegalNotice = lazy(() => import('./pages/legal/LegalNotice.jsx').then((m) => ({ default: m.LegalNotice })));
 const PrivacyPolicy = lazy(() => import('./pages/legal/PrivacyPolicy.jsx').then((m) => ({ default: m.PrivacyPolicy })));
 const CookiePolicy = lazy(() => import('./pages/legal/CookiePolicy.jsx').then((m) => ({ default: m.CookiePolicy })));
+const Support = lazy(() => import('./pages/legal/Support.jsx').then((m) => ({ default: m.Support })));
 
 function LoadingRoute() {
   return <div className="status loading">Cargando...</div>;
@@ -78,6 +79,8 @@ export function App() {
               <Route path="/legal-notice" element={<LegalNotice />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/cookie-policy" element={<CookiePolicy />} />
+              <Route path="/soporte" element={<Support />} />
+              <Route path="/support" element={<Navigate to="/soporte" replace />} />
               <Route path="/gallery" element={<Dashboard />} />
               <Route path="/photos/:photoId" element={<PhotoDetail />} />
               <Route path="/users/:userId" element={<Profile />} />

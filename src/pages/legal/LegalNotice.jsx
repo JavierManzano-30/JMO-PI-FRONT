@@ -26,7 +26,7 @@ export function LegalNotice() {
             </p>
             <ul>
               <li><strong>Titular:</strong> Javier Manzano Oliveros (SnapNation Project)</li>
-              <li><strong>Contacto:</strong> jmo-proyecto@snapnation.local</li>
+              <li><strong>Contacto:</strong> snapnationinfo@gmail.com</li>
               <li><strong>Finalidad:</strong> Plataforma educativa y de demostración para concursos fotográficos.</li>
             </ul>
           </div>

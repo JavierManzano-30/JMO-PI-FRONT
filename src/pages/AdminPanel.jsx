@@ -89,7 +89,7 @@ export function AdminPanel() {
               type="email"
               value={form.to}
               onChange={(event) => setForm((prev) => ({ ...prev, to: event.target.value }))}
-              placeholder="equipo@snapnation.local"
+              placeholder="snapnationinfo@gmail.com"
               required
             />
           </FormField>
