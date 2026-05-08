@@ -3,6 +3,12 @@ import { supabase } from '../lib/supabase';
 import { AuthContext } from '../context/AuthContext';
 import { resolveBackendUser } from '../services/supabaseService';
 
+function getAppBaseUrl() {
+  const envBase = String(import.meta.env.VITE_APP_URL || '').trim();
+  const rawBase = envBase || window.location.origin;
+  return rawBase.replace(/\/+$/, '');
+}
+
 export function AuthProvider({ children }) {
   const [session, setSession] = useState(null);
   const [user, setUser] = useState(null);
@@ -76,10 +82,11 @@ export function AuthProvider({ children }) {
   };
 
   const loginWithOAuth = async (provider) => {
+    const appBaseUrl = getAppBaseUrl();
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: window.location.origin + '/app/dashboard'
+        redirectTo: `${appBaseUrl}/app/dashboard`
       }
     });
     if (error) throw error;
@@ -87,7 +94,8 @@ export function AuthProvider({ children }) {
   };
 
   const register = async ({ username, email, password, regionId }) => {
-    const emailRedirectTo = `${window.location.origin}/login`;
+    const appBaseUrl = getAppBaseUrl();
+    const emailRedirectTo = `${appBaseUrl}/login`;
 
     const { data, error } = await supabase.auth.signUp({
       email,

@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
+import { createVote, deleteVote } from '../services/votesService.js';
 import { 
   getContests, 
   getCategories, 
@@ -277,9 +278,9 @@ export function Dashboard() {
 
     try {
       if (hasVoted) {
-        await supabase.from('votes').delete().eq('photo_id', photoId).eq('user_id', backendUserId);
+        await deleteVote(photoId);
       } else {
-        await supabase.from('votes').insert([{ photo_id: photoId, user_id: backendUserId }]);
+        await createVote(photoId);
       }
       
       setSubmissions(prev => prev.map(s => {

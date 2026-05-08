@@ -1,5 +1,11 @@
 import { supabase } from '../lib/supabase'
 
+function getAppBaseUrl() {
+  const envBase = String(import.meta.env.VITE_APP_URL || '').trim();
+  const rawBase = envBase || window.location.origin;
+  return rawBase.replace(/\/+$/, '');
+}
+
 function parseStrictPositiveInt(value) {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) return value;
   if (typeof value === 'string' && /^\d+$/.test(value)) return Number(value);
@@ -216,7 +222,7 @@ export async function resolveBackendUser(authUser, { createIfMissing = true } = 
  */
 
 export async function signUp(email, password, username, fullName) {
-  const emailRedirectTo = `${window.location.origin}/login`
+  const emailRedirectTo = `${getAppBaseUrl()}/login`
 
   const { data, error } = await supabase.auth.signUp({
     email,

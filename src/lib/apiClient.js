@@ -1,6 +1,6 @@
 import { getStoredToken } from './session.js';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api/v1';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000/api/v1' : '');
 export { API_BASE_URL };
 
 function toQueryString(params) {
@@ -36,10 +36,29 @@ async function parseResponse(response) {
     return null;
   }
 
-  return response.text();
+  const text = await response.text();
+  const preview = text.replace(/\s+/g, ' ').trim().slice(0, 120);
+
+  throw new ApiError(
+    preview.startsWith('<!doctype html') || preview.startsWith('<html')
+      ? 'La API no esta disponible en la URL configurada.'
+      : 'La API devolvio una respuesta no valida.',
+    response.status,
+    'INVALID_API_RESPONSE',
+    []
+  );
 }
 
 export async function apiRequest(path, options = {}) {
+  if (!API_BASE_URL) {
+    throw new ApiError(
+      'Falta configurar VITE_API_URL con la URL publica del backend.',
+      0,
+      'MISSING_API_URL',
+      []
+    );
+  }
+
   const {
     method = 'GET',
     query,

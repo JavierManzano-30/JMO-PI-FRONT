@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
+import { createVote, deleteVote } from '../services/votesService.js';
 import {
   getSubmissionById,
   getComments,
@@ -228,11 +229,11 @@ export function PhotoDetail() {
     
     try {
       if (hasVoted) {
-        await supabase.from('votes').delete().eq('photo_id', photoId).eq('user_id', backendUserId);
+        await deleteVote(photoId);
         setVoteCount(prev => prev - 1);
         setHasVoted(false);
       } else {
-        await supabase.from('votes').insert([{ photo_id: photoId, user_id: backendUserId }]);
+        await createVote(photoId);
         setVoteCount(prev => prev + 1);
         setHasVoted(true);
       }
