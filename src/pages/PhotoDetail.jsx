@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { useAuth } from '../hooks/useAuth';
 import { supabase } from '../lib/supabase';
@@ -143,6 +143,7 @@ export function PhotoDetail() {
   const { photoId } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [photo, setPhoto] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -389,7 +390,8 @@ export function PhotoDetail() {
 
   const isOwner = backendUserId === photo.user_id;
   const isContestClosed = photo?.contests?.is_active === false;
-  const backTo = user ? '/app/dashboard' : '/gallery';
+  const backTo = location.state?.from || (user ? '/app/dashboard' : '/gallery');
+  const backLabel = location.state?.fromLabel || 'Volver a la galería';
   const authorProfilePath = photo?.user_id ? (user ? `/app/users/${photo.user_id}` : `/users/${photo.user_id}`) : null;
 
   return (
@@ -397,14 +399,6 @@ export function PhotoDetail() {
       <style>{`
         .photo-detail-shell {
           padding: 0.75rem 0 1.5rem;
-        }
-        .photo-detail-back {
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          color: ${tokens.colors.textMuted};
-          text-decoration: none;
-          font-weight: 600;
         }
         .photo-detail-main-grid {
           max-width: 1200px;
@@ -548,8 +542,8 @@ export function PhotoDetail() {
         }
       `}</style>
       <div className="photo-detail-shell">
-      <Link to={backTo} className="photo-detail-back">
-        <ArrowLeft size={18} /> Volver a la galería
+      <Link to={backTo} className="back-link photo-detail-back">
+        <ArrowLeft size={18} /> {backLabel}
       </Link>
 
       <main className="photo-detail-main-grid">
@@ -567,7 +561,7 @@ export function PhotoDetail() {
               alt={photo.title}
               style={s.image}
               loading="eager"
-              fetchPriority="high"
+              fetchpriority="high"
               decoding="async"
             />
           </button>

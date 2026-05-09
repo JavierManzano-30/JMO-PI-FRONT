@@ -2,18 +2,19 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import {
   Trophy,
-  Medal,
   Award,
   Crown,
   Flame,
   ArrowRight,
-  TrendingUp,
   History,
   Users,
-  Search,
+  Camera,
+  CalendarDays,
+  MapPin,
+  Vote,
+  Clock3,
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { Button } from '../components/ui/Button.jsx';
 import { StatusMessage } from '../components/ui/StatusMessage.jsx';
 import { ApiError } from '../lib/apiClient.js';
 import { getRealtimeSocket, registerRealtimeHandlers, subscribeRealtimeRooms } from '../lib/realtime.js';
@@ -24,6 +25,139 @@ const HISTORY_PAGE_SIZE = 12; // Adjusted for the new layout
 const ACTIVE_RANK_LIMIT = 5;
 const ACTIVE_FETCH_LIMIT = 60;
 const OFFICIAL_FETCH_LIMIT = 24;
+
+const dateFormatter = new Intl.DateTimeFormat('es-ES', {
+  day: '2-digit',
+  month: 'short',
+});
+
+function formatDate(value) {
+  if (!value) return 'Fecha por confirmar';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Fecha por confirmar';
+  return dateFormatter.format(date);
+}
+
+function formatDateRange(startDate, endDate) {
+  return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+}
+
+function getTotalVotes(entries) {
+  return entries.reduce((total, entry) => total + Number(entry.votes || 0), 0);
+}
+
+function getFeaturedEntry(group) {
+  return group.rows.find((entry) => entry.rank === 1) || group.rows[0] || null;
+}
+
+function getThemeDateRange(group) {
+  const featuredEntry = getFeaturedEntry(group);
+  return formatDateRange(featuredEntry?.themeStartDate, featuredEntry?.themeEndDate);
+}
+
+function ContestStatusBadge({ active }) {
+  return (
+    <span className={`contest-status ${active ? 'is-live' : 'is-closed'}`}>
+      {active ? <Flame size={14} /> : <History size={14} />}
+      {active ? 'En votación' : 'Finalizado'}
+    </span>
+  );
+}
+
+function ContestMeta({ icon, label }) {
+  return (
+    <span className="contest-meta-item">
+      {icon}
+      {label}
+    </span>
+  );
+}
+
+function ContestCard({ group, isActive, contestsBasePath, isAuthenticated }) {
+  const featuredEntry = getFeaturedEntry(group);
+  const totalVotes = getTotalVotes(group.rows);
+  const detailPath = `${contestsBasePath}/${group.themeId}`;
+  const photoPathPrefix = isAuthenticated ? '../photos' : '/photos';
+  const primaryCtaPath = isActive
+    ? (isAuthenticated ? '/app/photos/upload' : '/login')
+    : detailPath;
+  const primaryCtaLabel = isActive ? 'Participar' : 'Ver resultados';
+
+  return (
+    <article className={`contest-card ${isActive ? 'contest-card-active' : 'contest-card-closed'}`}>
+      <div className="contest-card-media">
+        {featuredEntry?.image ? (
+          <img src={featuredEntry.image} alt={featuredEntry.photoTitle || group.themeTitle} />
+        ) : (
+          <div className="contest-card-placeholder">
+            <Camera size={28} />
+          </div>
+        )}
+        <ContestStatusBadge active={isActive} />
+      </div>
+
+      <div className="contest-card-body">
+        <div className="contest-card-heading">
+          <div>
+            <p className="contest-overline">{group.communityName || 'Comunidad general'}</p>
+            <h3>{group.themeTitle}</h3>
+          </div>
+          <div className="contest-score">
+            <strong>{totalVotes}</strong>
+            <span>votos</span>
+          </div>
+        </div>
+
+        <p className="contest-description">
+          {isActive
+            ? `Ranking provisional con ${group.rows.length} fotos destacadas. La clasificación se actualiza en tiempo real.`
+            : `Top ${group.rows.length} del concurso cerrado con resultados ordenados por votos.`}
+        </p>
+
+        <div className="contest-meta">
+          <ContestMeta icon={<CalendarDays size={15} />} label={getThemeDateRange(group)} />
+          <ContestMeta icon={<Users size={15} />} label={`${group.rows.length} participantes visibles`} />
+          <ContestMeta icon={<MapPin size={15} />} label={group.communityName || 'Todas las regiones'} />
+        </div>
+
+        <div className="contest-ranking-preview" aria-label={`Clasificación de ${group.themeTitle}`}>
+          {group.rows.slice(0, 3).map((entry) => (
+            <Link
+              className="contest-ranking-row"
+              key={`${group.themeId}-${entry.photoId}`}
+              to={`${photoPathPrefix}/${entry.photoId}`}
+              state={{ from: detailPath, fromLabel: 'Volver al concurso' }}
+              aria-label={`Ver publicación ${entry.photoTitle}`}
+            >
+              <span className="contest-ranking-position">
+                {entry.rank === 1 ? <Crown size={16} /> : `#${entry.rank}`}
+              </span>
+              {entry.thumb ? (
+                <img src={entry.thumb} alt={entry.photoTitle} />
+              ) : (
+                <span className="contest-ranking-thumb-placeholder">
+                  <Camera size={16} />
+                </span>
+              )}
+              <span className="contest-ranking-title">{entry.photoTitle}</span>
+              <strong>{entry.votes}</strong>
+            </Link>
+          ))}
+        </div>
+
+        <div className="contest-card-actions">
+          <Link className="contest-primary-action" to={primaryCtaPath}>
+            {primaryCtaLabel}
+            <ArrowRight size={16} />
+          </Link>
+          <Link className="contest-secondary-action" to={detailPath}>
+            {isActive ? 'Votar' : 'Ver detalles'}
+          </Link>
+        </div>
+      </div>
+    </article>
+  );
+}
 
 function groupEntriesByTheme(entries) {
   const groups = new Map();
@@ -183,6 +317,9 @@ export function Winners() {
   const activeByTheme = useMemo(() => groupEntriesByTheme(activeEntries), [activeEntries]);
   const closedByTheme = useMemo(() => groupEntriesByTheme(historyEntries), [historyEntries]);
   const contestsBasePath = isAuthenticated ? '/app/contests' : '/contests';
+  const featuredActive = activeByTheme[0] || null;
+  const activeVotes = useMemo(() => getTotalVotes(activeEntries), [activeEntries]);
+  const officialVotes = useMemo(() => getTotalVotes(officialEntries), [officialEntries]);
 
   const handleFilterChange = (key, value) => {
     const next = new URLSearchParams(params);
@@ -194,25 +331,54 @@ export function Winners() {
 
   return (
     <div className="winners-page">
-      {/* --- HERO AREA --- */}
       <header className="winners-hero">
         <div className="winners-hero-content">
-          <span className="eyebrow">SnapNation Concursos</span>
-          <h1>Concursos <br /> Activos e Históricos</h1>
+          <span className="eyebrow">
+            <Trophy size={16} />
+            SnapNation Concursos
+          </span>
+          <h1>Retos fotográficos, votaciones y ganadores en directo</h1>
           <p>
-            Consulta los concursos activos y los ya finalizados, con sus clasificaciones
-            y resultados oficiales por comunidad.
+            Explora los concursos activos, participa en los retos de la comunidad y consulta
+            resultados oficiales con una clasificación clara por temática.
           </p>
+          <div className="winners-hero-actions">
+            <Link className="contest-primary-action" to={isAuthenticated ? '/app/photos/upload' : '/login'}>
+              Participar ahora
+              <ArrowRight size={16} />
+            </Link>
+            <Link className="contest-secondary-action on-hero" to={featuredActive ? `${contestsBasePath}/${featuredActive.themeId}` : contestsBasePath}>
+              Ver ranking activo
+            </Link>
+          </div>
         </div>
+
+        <aside className="winners-hero-panel" aria-label="Resumen de concursos">
+          <div className="hero-stat">
+            <span><Flame size={16} /> Activos</span>
+            <strong>{activeByTheme.length}</strong>
+          </div>
+          <div className="hero-stat">
+            <span><Vote size={16} /> Votos visibles</span>
+            <strong>{activeVotes}</strong>
+          </div>
+          <div className="hero-stat">
+            <span><Award size={16} /> Ganadores</span>
+            <strong>{officialEntries.length}</strong>
+          </div>
+        </aside>
       </header>
 
-      {/* --- FLOATING FILTERS --- */}
-      <div className="winners-filters">
-        <div className="filter-glass">
-          <label htmlFor="winnerCommunity">
-            <Users size={18} style={{ verticalAlign: 'middle', marginRight: '4px' }} />
+      <section className="winners-toolbar" aria-label="Filtros de concursos">
+        <div>
+          <p className="toolbar-kicker">Filtro de comunidad</p>
+          <h2>Encuentra concursos por mundo o región</h2>
+        </div>
+        <label className="contest-filter" htmlFor="winnerCommunity">
+          <span>
+            <Users size={18} />
             Comunidad
-          </label>
+          </span>
           <select
             id="winnerCommunity"
             value={filters.communityId}
@@ -223,87 +389,65 @@ export function Winners() {
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
           </select>
-        </div>
-      </div>
+        </label>
+      </section>
 
-      {/* --- ACTIVE RANKING SECTION --- */}
       <section className="winners-section">
         <div className="winners-section-head">
           <div>
             <span className="section-kicker section-kicker-live">
               <Flame size={14} /> CONCURSOS ACTIVOS
             </span>
-            <h2>Concursos en Curso</h2>
+            <h2>Ahora en votación</h2>
           </div>
           <p className="section-subtitle">Clasificación provisional en tiempo real</p>
         </div>
 
         {activeStatus === 'loading' && <StatusMessage tone="loading">Sincronizando rankings...</StatusMessage>}
         {activeStatus === 'error' && <StatusMessage tone="error">{activeError}</StatusMessage>}
-        {activeStatus === 'empty' && <StatusMessage tone="empty">No hay rondas activas ahora mismo.</StatusMessage>}
+        {activeStatus === 'empty' && (
+          <div className="contest-empty-state">
+            <Clock3 size={28} />
+            <h3>No hay concursos activos ahora mismo</h3>
+            <p>Cuando se abra una nueva ronda aparecerá aquí con su ranking y acceso directo para participar.</p>
+          </div>
+        )}
 
         {activeStatus === 'default' && (
-          <div className="active-ranking-grid">
+          <div className="contest-grid contest-grid-featured">
             {activeByTheme.map((group) => (
-              <div className="theme-bracket" key={`active-${group.themeId}`}>
-                <div className="theme-bracket-header">
-                  <h3>{group.themeTitle}</h3>
-                  <div className="theme-bracket-actions">
-                    <div className="status-pulse">
-                      <span className="pulse-dot" /> Live
-                    </div>
-                    <Link className="btn btn-link" to={`${contestsBasePath}/${group.themeId}`}>Ver concurso</Link>
-                  </div>
-                </div>
-
-                <div className="ranking-stack">
-                  {group.rows.map((entry) => (
-                    <div 
-                      className={`rank-item ${entry.rank === 1 ? 'top-1' : ''}`} 
-                      key={`active-${entry.themeId}-${entry.photoId}`}
-                    >
-                      <div className="rank-number">
-                        {entry.rank === 1 ? <Crown size={24} /> : `#${entry.rank}`}
-                      </div>
-                      <img src={entry.thumb} alt={entry.photoTitle} className="rank-thumb" />
-                      <div className="rank-info">
-                        <b>{entry.photoTitle}</b>
-                        <span>{entry.authorDisplayName}</span>
-                      </div>
-                      <div className="rank-score">
-                        <b>{entry.votes}</b>
-                        <small style={{ display: 'block', fontSize: '0.625rem', opacity: 0.5 }}>VOTOS</small>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <div style={{ marginTop: '1.5rem', textAlign: 'center' }}>
-                  <Link to={`/photos/${group.rows[0].photoId}`} className="btn btn-ghost btn-sm">
-                    Ir a la batalla <ArrowRight size={14} />
-                  </Link>
-                </div>
-              </div>
+              <ContestCard
+                key={`active-${group.themeId}`}
+                group={group}
+                isActive
+                contestsBasePath={contestsBasePath}
+                isAuthenticated={isAuthenticated}
+              />
             ))}
           </div>
         )}
       </section>
 
-      {/* --- HALL OF FAME SECTION --- */}
       <section className="winners-section">
         <div className="winners-section-head">
           <div>
             <span className="section-kicker section-kicker-gold">
-              <Trophy size={14} /> ELITE SELECTION
+              <Trophy size={14} /> SALÓN DE LA FAMA
             </span>
-            <h2>Salón de la Fama</h2>
+            <h2>Ganadores oficiales</h2>
           </div>
-          <Link to="/app/contests" className="btn btn-link">Ver concursos</Link>
+          <p className="section-subtitle">{officialVotes} votos acumulados en concursos cerrados</p>
         </div>
 
         {officialStatus === 'loading' && <StatusMessage tone="loading">Abriendo el salón...</StatusMessage>}
         {officialStatus === 'error' && <StatusMessage tone="error">{officialError}</StatusMessage>}
-        {officialStatus === 'empty' && <StatusMessage tone="empty">Aún no hay leyendas registradas.</StatusMessage>}
+        {officialStatus === 'empty' && (
+          <div className="contest-empty-state compact">
+            <Award size={26} />
+            <h3>Aún no hay ganadores oficiales</h3>
+            <p>Los ganadores aparecerán cuando se cierre el primer concurso con resultados.</p>
+          </div>
+        )}
 
         {officialStatus === 'default' && (
           <div className="hall-of-fame-grid">
@@ -311,7 +455,7 @@ export function Winners() {
               <article className="hall-card" key={`official-${entry.themeId}-${entry.photoId}`}>
                 <img src={entry.image} alt={entry.photoTitle} className="hall-img" />
                 <div className="hall-overlay">
-                  <span className="badge">Winner Original</span>
+                  <span className="badge">Ganador</span>
                   <p>{entry.themeTitle}</p>
                   <h3>{entry.photoTitle}</h3>
                   <div className="hall-footer">
@@ -321,7 +465,8 @@ export function Winners() {
                     <div className="hall-votes">{entry.votes} pts</div>
                   </div>
                   <Link 
-                    to={`/photos/${entry.photoId}`} 
+                    to={`${isAuthenticated ? '../photos' : '/photos'}/${entry.photoId}`} 
+                    state={{ from: `${contestsBasePath}/${entry.themeId}`, fromLabel: 'Volver al concurso' }}
                     style={{ position: 'absolute', inset: 0, zIndex: 2 }}
                     aria-label="Ver detalle"
                   />
@@ -337,7 +482,7 @@ export function Winners() {
         <div className="winners-section-head">
           <div>
             <span className="section-kicker section-kicker-muted">
-              <History size={14} /> ARCHIVE
+              <History size={14} /> ARCHIVO
             </span>
             <h2>Concursos Finalizados</h2>
           </div>
@@ -345,44 +490,24 @@ export function Winners() {
 
         {historyStatus === 'loading' && <StatusMessage tone="loading">Cargando registros...</StatusMessage>}
         {historyStatus === 'error' && <StatusMessage tone="error">{historyError}</StatusMessage>}
-        {historyStatus === 'empty' && <StatusMessage tone="empty">No hay temas cerrados todavía.</StatusMessage>}
+        {historyStatus === 'empty' && (
+          <div className="contest-empty-state compact">
+            <History size={26} />
+            <h3>No hay concursos finalizados</h3>
+            <p>El archivo se completará automáticamente cuando existan rondas cerradas.</p>
+          </div>
+        )}
 
         {historyStatus === 'default' && (
-          <div className="active-ranking-grid">
+          <div className="contest-grid">
             {closedByTheme.map((group) => (
-              <div className="theme-bracket is-closed" key={`closed-${group.themeId}`}>
-                <div className="theme-bracket-header">
-                  <h3>{group.themeTitle}</h3>
-                  <div className="theme-bracket-actions">
-                    <span className="closed-label">FINALIZADO</span>
-                    <Link className="btn btn-link" to={`${contestsBasePath}/${group.themeId}`}>Ver concurso</Link>
-                  </div>
-                </div>
-
-                <div className="ranking-stack">
-                  {group.rows.map((entry) => (
-                    <div className="rank-item" key={`closed-${entry.themeId}-${entry.photoId}`}>
-                      <div className="rank-number" style={{ color: entry.rank === 1 ? '#f59e0b' : '#94a3b8' }}>
-                        {entry.rank === 1 ? <Medal size={20} /> : `#${entry.rank}`}
-                      </div>
-                      <img src={entry.thumb} alt={entry.photoTitle} className="rank-thumb" />
-                      <div className="rank-info">
-                        <b>{entry.photoTitle}</b>
-                        <span>{entry.authorDisplayName}</span>
-                      </div>
-                      <div className="rank-score">
-                        <b>{entry.votes}</b>
-                      </div>
-                      <Link 
-                        className="btn btn-icon btn-sm" 
-                        to={`/photos/${entry.photoId}`}
-                      >
-                        <ArrowRight size={16} />
-                      </Link>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <ContestCard
+                key={`closed-${group.themeId}`}
+                group={group}
+                isActive={false}
+                contestsBasePath={contestsBasePath}
+                isAuthenticated={isAuthenticated}
+              />
             ))}
           </div>
         )}

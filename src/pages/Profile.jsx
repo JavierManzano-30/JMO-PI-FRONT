@@ -152,7 +152,7 @@ export function Profile() {
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-page)', padding: '2rem', fontFamily: "'Inter', sans-serif", color: 'var(--text)' }}>
       <header style={{ maxWidth: '1000px', margin: '0 auto 2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <Link to={backTo} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--muted)', textDecoration: 'none', fontWeight: 600 }}>
+        <Link to={backTo} className="back-link">
           <ArrowLeft size={18} /> Volver
         </Link>
 

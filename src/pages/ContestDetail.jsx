@@ -63,10 +63,10 @@ export function ContestDetail() {
   const isWide = (index) => index % 5 === 0;
 
   return (
-    <section className="winners-page" style={{ maxWidth: '1100px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '1rem' }}>
-        <Link to={backTo} className="btn btn-ghost" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-          <ArrowLeft size={16} /> Volver a concursos
+    <section className="winners-page contest-detail-page">
+      <div className="contest-detail-back-row">
+        <Link to={backTo} className="back-link">
+          <ArrowLeft size={18} /> Volver a concursos
         </Link>
       </div>
 
@@ -105,6 +105,7 @@ export function ContestDetail() {
                 <Link
                   key={`${entry.themeId}-${entry.photoId}`}
                   to={isAuthenticated ? `/app/photos/${entry.photoId}` : `/photos/${entry.photoId}`}
+                  state={{ from: backTo === '/app/contests' ? `/app/contests/${themeId}` : `/contests/${themeId}`, fromLabel: 'Volver al concurso' }}
                   style={{
                     position: 'relative',
                     display: 'block',

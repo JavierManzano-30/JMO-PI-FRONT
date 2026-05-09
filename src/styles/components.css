@@ -42,6 +42,35 @@
   border-color: var(--btn-ghost-hover-border);
 }
 
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface);
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 800;
+  box-shadow: 0 14px 28px -24px rgba(15, 23, 42, 0.45);
+  transition: transform 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.back-link:hover,
+.back-link:focus-visible {
+  background: var(--surface-soft);
+  border-color: var(--primary);
+  color: var(--primary);
+  transform: translateY(-1px);
+}
+
+.back-link:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--primary) 32%, transparent);
+  outline-offset: 2px;
+}
+
 .status {
   border-radius: var(--radius-md);
   padding: 0.8rem 0.9rem;

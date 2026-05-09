@@ -424,7 +424,7 @@ export function Chat() {
         }
       `}</style>
       <header style={{ maxWidth: '1160px', margin: '0 auto 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <Link to="/app/dashboard" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', color: colors.muted, textDecoration: 'none', fontWeight: 700 }}>
+        <Link to="/app/dashboard" className="back-link">
           <ArrowLeft size={18} /> Volver al panel
         </Link>
         <h1 style={{ margin: 0, fontSize: '1.4rem', color: colors.text }}>Chat</h1>
