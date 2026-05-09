@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { 
@@ -7,7 +7,7 @@ import {
   Camera, 
   MapPin, 
   Mail, 
-  ChevronLeft, 
+  ArrowLeft, 
   Save, 
   ShieldCheck,
   FileUp,
@@ -242,9 +242,9 @@ export function ProfileEdit() {
   return (
     <div style={{ background: 'var(--bg-page)', minHeight: '100vh', color: 'var(--text)' }}>
       <nav style={{ maxWidth: '1000px', margin: '0 auto', padding: '2rem 1.5rem' }}>
-        <button onClick={() => navigate('/app/profile')} style={{ background: 'none', border: 'none', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 700, cursor: 'pointer', color: tokens.colors.textMuted }}>
-          <ChevronLeft size={20} /> Volver al panel
-        </button>
+        <Link to="/app/profile" className="back-link">
+          <ArrowLeft size={18} /> Volver
+        </Link>
       </nav>
 
       <main style={s.container}>

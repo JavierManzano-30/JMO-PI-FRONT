@@ -9,8 +9,8 @@ export function PublicLayout() {
   const { user, logout, isAuthenticated } = useAuth();
 
   if (isAuthenticated && user) {
-    const handleLogout = () => {
-      logout();
+    const handleLogout = async () => {
+      await logout();
       navigate('/login', { replace: true });
     };
     return <AppLayout layout={createPrivateLayoutConfig({ user, onLogout: handleLogout })} />;

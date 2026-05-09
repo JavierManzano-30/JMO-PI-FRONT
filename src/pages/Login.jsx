@@ -11,6 +11,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import logoSrc from '../assets/logo-propio-transparente.png';
+import logoWhiteSrc from '../assets/logo-propio-blanco.png';
 import { useAuth } from '../hooks/useAuth';
 
 /* ─────────────────────── estilos en línea ─────────────────────── */
@@ -440,7 +441,7 @@ export function Login() {
 
         <div style={s.logo}>
           <img
-            src={logoSrc}
+            src={dark ? logoWhiteSrc : logoSrc}
             alt="SnapNation"
             height="88"
             style={{

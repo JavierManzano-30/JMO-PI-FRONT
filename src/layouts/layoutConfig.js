@@ -51,10 +51,10 @@ function buildFooterSections({ isAuthenticated, isAdmin }) {
 export function createPublicLayoutConfig() {
   return {
     homeTo: '/gallery',
+    useSidebar: true,
     navItems: [
       { to: '/gallery', label: 'Galería', end: true },
       { to: '/contests', label: 'Concursos', end: true },
-      { to: '/login', label: 'Acceso', end: true },
     ],
     authActions: [
       { to: '/login', label: 'Iniciar sesión', variant: 'ghost' },
@@ -82,6 +82,7 @@ export function createPrivateLayoutConfig({ user, onLogout }) {
 
   return {
     homeTo: '/app/dashboard',
+    useSidebar: true,
     navItems,
     user,
     onLogout,

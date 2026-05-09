@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { getRegions } from '../services/supabaseService.js';
 import logoSrc from '../assets/logo-propio-transparente.png';
+import logoWhiteSrc from '../assets/logo-propio-blanco.png';
 
 /* ─────────────────────── estilos en línea ─────────────────────── */
 const s = {
@@ -401,7 +402,7 @@ export function Register() {
 
         <div style={s.logo}>
           <img
-            src={logoSrc}
+            src={dark ? logoWhiteSrc : logoSrc}
             alt="SnapNation"
             height="88"
             style={{

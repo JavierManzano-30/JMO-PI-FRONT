@@ -387,6 +387,18 @@ export function Chat() {
     }
   };
 
+  const isMobileConversationView = isMobile && mobileScreen === 'chat' && selectedUser;
+
+  const handleBackToChatList = () => {
+    setMobileScreen('list');
+    setParams((previousParams) => {
+      const nextParams = new URLSearchParams(previousParams);
+      nextParams.delete('user');
+      nextParams.delete('share');
+      return nextParams;
+    }, { replace: true });
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: colors.pageBg, padding: '1.5rem', fontFamily: "'Inter', sans-serif" }}>
       <style>{`
@@ -424,9 +436,15 @@ export function Chat() {
         }
       `}</style>
       <header style={{ maxWidth: '1160px', margin: '0 auto 1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <Link to="/app/dashboard" className="back-link">
-          <ArrowLeft size={18} /> Volver al panel
-        </Link>
+        {isMobileConversationView ? (
+          <button type="button" className="back-link" onClick={handleBackToChatList}>
+            <ArrowLeft size={18} /> Volver
+          </button>
+        ) : (
+          <Link to="/app/dashboard" className="back-link">
+            <ArrowLeft size={18} /> Volver al panel
+          </Link>
+        )}
         <h1 style={{ margin: 0, fontSize: '1.4rem', color: colors.text }}>Chat</h1>
       </header>
 

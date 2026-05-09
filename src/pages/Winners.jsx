@@ -150,9 +150,11 @@ function ContestCard({ group, isActive, contestsBasePath, isAuthenticated }) {
             {primaryCtaLabel}
             <ArrowRight size={16} />
           </Link>
-          <Link className="contest-secondary-action" to={detailPath}>
-            {isActive ? 'Votar' : 'Ver detalles'}
-          </Link>
+          {isActive && (
+            <Link className="contest-secondary-action" to={detailPath}>
+              Votar
+            </Link>
+          )}
         </div>
       </div>
     </article>
