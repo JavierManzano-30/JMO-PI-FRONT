@@ -7,13 +7,23 @@
 }
 
 .contest-detail-page {
-  width: min(1100px, calc(100% - 2rem));
-  margin: 0 auto;
+  width: 100%;
+  margin: 0;
   padding-top: 2.25rem;
+  box-sizing: border-box;
 }
 
 .contest-detail-back-row {
+  width: min(1100px, calc(100% - 2rem));
+  margin-left: auto;
+  margin-right: auto;
   margin-bottom: 2rem;
+}
+
+.contest-detail-page > .theme-bracket {
+  width: min(1100px, calc(100% - 2rem));
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .winners-hero {

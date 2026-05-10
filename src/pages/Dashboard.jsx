@@ -106,14 +106,17 @@ const s = {
   },
   footer: {
     padding: '1.25rem',
-    display: 'flex',
+    display: 'grid',
+    gridTemplateColumns: 'minmax(0, 1fr) auto',
+    gridTemplateAreas: '"author actions" "tags tags"',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: '0.55rem 0.75rem',
     background: tokens.colors.white,
     borderTop: `1px solid ${tokens.colors.border}`,
   },
   author: {
     display: 'flex',
+    gridArea: 'author',
     alignItems: 'center',
     gap: '0.75rem',
     overflow: 'hidden',
@@ -618,15 +621,10 @@ export function Dashboard() {
                     <p style={{ fontSize: '0.75rem', color: tokens.colors.textMuted, margin: '2px 0 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {item.title}
                     </p>
-                    <div style={{ display: 'flex', gap: '6px', marginTop: '4px', fontSize: '0.65rem', fontWeight: 600, color: tokens.colors.accent, textTransform: 'uppercase', letterSpacing: '0.025em' }}>
-                      <span>{item.contests?.title || 'Gral.'}</span>
-                      <span style={{ opacity: 0.3 }}>•</span>
-                      <span style={{ color: tokens.colors.textMuted }}>{item.categories?.name || 'Sin Cat.'}</span>
-                    </div>
                   </button>
                 </div>
 
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ gridArea: 'actions', display: 'flex', gap: '8px', flexShrink: 0 }}>
                   <button
                     type="button"
                     onClick={(e) => handleShareToChat(e, item)}
@@ -694,6 +692,26 @@ export function Dashboard() {
                     })()}
                     {!user && <div style={{ position: 'absolute', top: '50%', left: '15%', right: '15%', height: '2px', background: '#94a3b8', transform: 'rotate(-45deg)', pointerEvents: 'none' }} />}
                   </div>
+                </div>
+                <div
+                  style={{
+                    gridArea: 'tags',
+                    display: 'flex',
+                    flexWrap: 'wrap',
+                    gap: '4px 6px',
+                    alignItems: 'center',
+                    fontSize: '0.65rem',
+                    fontWeight: 700,
+                    color: tokens.colors.accent,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.025em',
+                    minWidth: 0,
+                    lineHeight: 1.25,
+                  }}
+                >
+                  <span>{item.contests?.title || 'Gral.'}</span>
+                  <span style={{ opacity: 0.3 }}>•</span>
+                  <span style={{ color: tokens.colors.textMuted }}>{item.categories?.name || 'Sin Cat.'}</span>
                 </div>
               </div>
             </Link>
