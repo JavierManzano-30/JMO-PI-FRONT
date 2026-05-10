@@ -18,7 +18,9 @@ import { useAuth } from '../hooks/useAuth';
 import { StatusMessage } from '../components/ui/StatusMessage.jsx';
 import { ApiError } from '../lib/apiClient.js';
 import { getRealtimeSocket, registerRealtimeHandlers, subscribeRealtimeRooms } from '../lib/realtime.js';
+import { getContestRemainingTime } from '../lib/contestTime.js';
 import { listCommunities } from '../services/communitiesService.js';
+import { listThemes } from '../services/themesService.js';
 import { listWinners } from '../services/winnersService.js';
 
 const HISTORY_PAGE_SIZE = 12; // Adjusted for the new layout
@@ -51,8 +53,7 @@ function getFeaturedEntry(group) {
 }
 
 function getThemeDateRange(group) {
-  const featuredEntry = getFeaturedEntry(group);
-  return formatDateRange(featuredEntry?.themeStartDate, featuredEntry?.themeEndDate);
+  return formatDateRange(group.themeStartDate, group.themeEndDate);
 }
 
 function ContestStatusBadge({ active }) {
@@ -73,7 +74,18 @@ function ContestMeta({ icon, label }) {
   );
 }
 
-function ContestCard({ group, isActive, contestsBasePath, isAuthenticated }) {
+function ContestCountdown({ endDate, now }) {
+  const remaining = getContestRemainingTime(endDate, now);
+
+  return (
+    <div className={`contest-countdown ${remaining.isFinished ? 'is-finished' : ''}`}>
+      <span><Clock3 size={15} /> Termina en</span>
+      <strong>{remaining.label}</strong>
+    </div>
+  );
+}
+
+function ContestCard({ group, isActive, contestsBasePath, isAuthenticated, now }) {
   const featuredEntry = getFeaturedEntry(group);
   const totalVotes = getTotalVotes(group.rows);
   const detailPath = `${contestsBasePath}/${group.themeId}`;
@@ -110,9 +122,11 @@ function ContestCard({ group, isActive, contestsBasePath, isAuthenticated }) {
 
         <p className="contest-description">
           {isActive
-            ? `Ranking provisional con ${group.rows.length} fotos destacadas. La clasificación se actualiza en tiempo real.`
+            ? (group.description || `Ranking provisional con ${group.rows.length} fotos destacadas. La clasificación se actualiza en tiempo real.`)
             : `Top ${group.rows.length} del concurso cerrado con resultados ordenados por votos.`}
         </p>
+
+        {isActive && <ContestCountdown endDate={group.themeEndDate} now={now} />}
 
         <div className="contest-meta">
           <ContestMeta icon={<CalendarDays size={15} />} label={getThemeDateRange(group)} />
@@ -121,6 +135,12 @@ function ContestCard({ group, isActive, contestsBasePath, isAuthenticated }) {
         </div>
 
         <div className="contest-ranking-preview" aria-label={`Clasificación de ${group.themeTitle}`}>
+          {group.rows.length === 0 && (
+            <div className="contest-ranking-empty">
+              <Camera size={16} />
+              Aún no hay fotos en este concurso
+            </div>
+          )}
           {group.rows.slice(0, 3).map((entry) => (
             <Link
               className="contest-ranking-row"
@@ -161,15 +181,31 @@ function ContestCard({ group, isActive, contestsBasePath, isAuthenticated }) {
   );
 }
 
-function groupEntriesByTheme(entries) {
+function groupEntriesByTheme(entries, themes = []) {
   const groups = new Map();
+
+  themes.forEach((theme) => {
+    groups.set(theme.id, {
+      themeId: theme.id,
+      themeTitle: theme.title,
+      description: theme.description,
+      communityName: theme.community_name || theme.communityName,
+      themeStartDate: theme.start_date || theme.startDate,
+      themeEndDate: theme.end_date || theme.endDate,
+      themeIsActive: theme.is_active ?? theme.isActive,
+      rows: [],
+    });
+  });
 
   entries.forEach((entry) => {
     if (!groups.has(entry.themeId)) {
       groups.set(entry.themeId, {
         themeId: entry.themeId,
         themeTitle: entry.themeTitle,
+        description: entry.themeDescription,
         communityName: entry.communityName,
+        themeStartDate: entry.themeStartDate,
+        themeEndDate: entry.themeEndDate,
         themeIsActive: entry.themeIsActive,
         rows: [],
       });
@@ -193,6 +229,8 @@ export function Winners() {
   const [activeStatus, setActiveStatus] = useState('loading');
   const [activeError, setActiveError] = useState('');
   const [activeEntries, setActiveEntries] = useState([]);
+  const [activeThemes, setActiveThemes] = useState([]);
+  const [now, setNow] = useState(() => new Date());
 
   const [officialStatus, setOfficialStatus] = useState('loading');
   const [officialError, setOfficialError] = useState('');
@@ -217,22 +255,37 @@ export function Winners() {
       .catch(() => setCommunities([]));
   }, []);
 
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   const loadActiveRanking = useCallback(async () => {
     setActiveStatus('loading');
     setActiveError('');
 
     try {
-      const response = await listWinners({
-        page: 1,
-        limit: ACTIVE_FETCH_LIMIT,
-        communityId: filters.communityId || undefined,
-        themeState: 'active',
-        rankLimit: ACTIVE_RANK_LIMIT,
-      });
+      const [rankingResponse, themesResponse] = await Promise.all([
+        listWinners({
+          page: 1,
+          limit: ACTIVE_FETCH_LIMIT,
+          communityId: filters.communityId || undefined,
+          themeState: 'active',
+          rankLimit: ACTIVE_RANK_LIMIT,
+        }),
+        listThemes({
+          page: 1,
+          limit: 20,
+          isActive: true,
+          communityId: filters.communityId || undefined,
+        }),
+      ]);
 
-      const rows = response.data || [];
+      const rows = rankingResponse.data || [];
+      const themes = themesResponse.data || [];
       setActiveEntries(rows);
-      setActiveStatus(rows.length ? 'default' : 'empty');
+      setActiveThemes(themes);
+      setActiveStatus(rows.length || themes.length ? 'default' : 'empty');
     } catch (requestError) {
       setActiveStatus('error');
       setActiveError(requestError instanceof ApiError ? requestError.message : 'No se pudo cargar el ranking actual.');
@@ -316,7 +369,7 @@ export function Winners() {
     return () => cleanupRealtime();
   }, [filters.communityId, loadActiveRanking]);
 
-  const activeByTheme = useMemo(() => groupEntriesByTheme(activeEntries), [activeEntries]);
+  const activeByTheme = useMemo(() => groupEntriesByTheme(activeEntries, activeThemes), [activeEntries, activeThemes]);
   const closedByTheme = useMemo(() => groupEntriesByTheme(historyEntries), [historyEntries]);
   const contestsBasePath = isAuthenticated ? '/app/contests' : '/contests';
   const featuredActive = activeByTheme[0] || null;
@@ -424,6 +477,7 @@ export function Winners() {
                 isActive
                 contestsBasePath={contestsBasePath}
                 isAuthenticated={isAuthenticated}
+                now={now}
               />
             ))}
           </div>

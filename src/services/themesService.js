@@ -10,3 +10,7 @@ export async function listThemes(params = {}) {
     },
   });
 }
+
+export async function getThemeById(id) {
+  return apiRequest(`/themes/${id}`);
+}

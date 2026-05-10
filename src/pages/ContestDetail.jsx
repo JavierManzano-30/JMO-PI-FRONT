@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { ArrowLeft, Trophy } from 'lucide-react';
+import { ArrowLeft, Clock3, Trophy } from 'lucide-react';
 import { listWinners } from '../services/winnersService.js';
+import { getThemeById } from '../services/themesService.js';
 import { useAuth } from '../hooks/useAuth.js';
+import { getContestRemainingTime } from '../lib/contestTime.js';
 
 const MAX_ROWS = 200;
 
@@ -14,12 +16,43 @@ function formatDateRange(startDate, endDate) {
   return `${s} - ${e}`;
 }
 
+function mapThemeToContest(theme) {
+  if (!theme) return null;
+
+  return {
+    themeId: theme.id,
+    themeTitle: theme.title,
+    themeStartDate: theme.start_date,
+    themeEndDate: theme.end_date,
+    themeIsActive: theme.is_active,
+    communityName: theme.community_name || 'Comunidad general',
+  };
+}
+
+function ContestCountdown({ endDate, now }) {
+  const remaining = getContestRemainingTime(endDate, now);
+
+  return (
+    <div className={`contest-countdown ${remaining.isFinished ? 'is-finished' : ''}`}>
+      <span><Clock3 size={15} /> Termina en</span>
+      <strong>{remaining.label}</strong>
+    </div>
+  );
+}
+
 export function ContestDetail() {
   const { themeId } = useParams();
   const { isAuthenticated } = useAuth();
   const [status, setStatus] = useState('loading');
   const [error, setError] = useState('');
   const [rows, setRows] = useState([]);
+  const [themeContest, setThemeContest] = useState(null);
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     let ignore = false;
@@ -38,7 +71,17 @@ export function ContestDetail() {
         if (ignore) return;
         const data = response.data || [];
         setRows(data);
-        setStatus(data.length ? 'default' : 'empty');
+
+        if (data.length) {
+          setThemeContest(null);
+          setStatus('default');
+          return;
+        }
+
+        const theme = await getThemeById(themeId);
+        if (ignore) return;
+        setThemeContest(mapThemeToContest(theme));
+        setStatus('default');
       } catch (err) {
         if (ignore) return;
         setError(err?.message || 'No se pudo cargar el concurso.');
@@ -52,7 +95,7 @@ export function ContestDetail() {
     };
   }, [themeId]);
 
-  const contest = rows[0] || null;
+  const contest = rows[0] || themeContest;
   const backTo = isAuthenticated ? '/app/contests' : '/contests';
 
   const subtitle = useMemo(() => {
@@ -81,8 +124,11 @@ export function ContestDetail() {
               <span className="eyebrow">CONCURSO</span>
               <h1>{contest.themeTitle}</h1>
               <p>{subtitle}</p>
-              <div style={{ marginTop: '0.5rem', fontWeight: 700, color: contest.themeIsActive ? '#ef4444' : '#64748b' }}>
-                {contest.themeIsActive ? 'Activo' : 'Finalizado'}
+              <div className="contest-detail-status-row">
+                <div className={`contest-detail-state ${contest.themeIsActive ? 'is-live' : ''}`}>
+                  {contest.themeIsActive ? 'Activo' : 'Finalizado'}
+                </div>
+                {contest.themeIsActive && <ContestCountdown endDate={contest.themeEndDate} now={now} />}
               </div>
             </div>
           </header>
@@ -92,16 +138,23 @@ export function ContestDetail() {
               <h3>Todas las publicaciones ({rows.length})</h3>
               <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 700 }}>Orden por clasificación</span>
             </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                gridAutoRows: '360px',
-                gridAutoFlow: 'dense',
-                gap: '1rem',
-              }}
-            >
-              {rows.map((entry, index) => (
+            {rows.length === 0 ? (
+              <div className="contest-empty-state compact">
+                <Clock3 size={26} />
+                <h3>Aún no hay publicaciones</h3>
+                <p>Este concurso ya está abierto. Las fotos aparecerán aquí cuando los usuarios participen.</p>
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+                  gridAutoRows: '360px',
+                  gridAutoFlow: 'dense',
+                  gap: '1rem',
+                }}
+              >
+                {rows.map((entry, index) => (
                 <Link
                   key={`${entry.themeId}-${entry.photoId}`}
                   to={isAuthenticated ? `/app/photos/${entry.photoId}` : `/photos/${entry.photoId}`}
@@ -202,8 +255,9 @@ export function ContestDetail() {
                     </p>
                   </div>
                 </Link>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </>
       )}
