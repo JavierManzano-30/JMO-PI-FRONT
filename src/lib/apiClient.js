@@ -1,4 +1,5 @@
 import { getStoredToken } from './session.js';
+import { supabase } from './supabase.js';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3000/api/v1' : '');
 export { API_BASE_URL };
@@ -24,6 +25,15 @@ export class ApiError extends Error {
     this.code = code;
     this.details = details;
   }
+}
+
+async function getAuthToken(explicitToken) {
+  if (explicitToken) {
+    return explicitToken;
+  }
+
+  const { data } = await supabase.auth.getSession();
+  return data.session?.access_token || getStoredToken();
 }
 
 async function parseResponse(response) {
@@ -76,7 +86,7 @@ export async function apiRequest(path, options = {}) {
   }
 
   if (auth) {
-    const authToken = token || getStoredToken();
+    const authToken = await getAuthToken(token);
     if (authToken) {
       finalHeaders.set('Authorization', `Bearer ${authToken}`);
     }
