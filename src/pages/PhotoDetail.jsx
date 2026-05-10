@@ -109,7 +109,7 @@ const s = {
   },
   metaGrid: {
     display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
+    gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
     gap: '1.5rem',
     margin: '2rem 0',
     padding: '1.5rem',
@@ -149,6 +149,7 @@ export function PhotoDetail() {
   const [error, setError] = useState('');
   const [hasVoted, setHasVoted] = useState(false);
   const [voteCount, setVoteCount] = useState(0);
+  const [votePending, setVotePending] = useState(false);
   const [comments, setComments] = useState([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -219,6 +220,7 @@ export function PhotoDetail() {
 
   const handleToggleVote = async () => {
     if (!user) return navigate('/login');
+    if (votePending) return;
     if (photo?.contests?.is_active === false) {
       alert('Este torneo ya ha finalizado. No se pueden cambiar votos.');
       return;
@@ -227,19 +229,26 @@ export function PhotoDetail() {
       alert('Tu cuenta actual no está enlazada para votar en esta base de datos.');
       return;
     }
+
+    const previousHasVoted = hasVoted;
+    const voteDelta = hasVoted ? -1 : 1;
+    setVotePending(true);
+    setHasVoted(!hasVoted);
+    setVoteCount(prev => Math.max(0, prev + voteDelta));
     
     try {
-      if (hasVoted) {
+      if (previousHasVoted) {
         await deleteVote(photoId);
-        setVoteCount(prev => prev - 1);
-        setHasVoted(false);
       } else {
         await createVote(photoId);
-        setVoteCount(prev => prev + 1);
-        setHasVoted(true);
       }
     } catch (err) {
       console.error(err);
+      setHasVoted(previousHasVoted);
+      setVoteCount(prev => Math.max(0, prev - voteDelta));
+      alert('No se pudo actualizar el voto. Inténtalo de nuevo.');
+    } finally {
+      setVotePending(false);
     }
   };
 
@@ -460,10 +469,21 @@ export function PhotoDetail() {
           gap: 0.55rem;
           font-weight: 700;
           color: ${tokens.colors.accent};
+          max-width: 100%;
+          min-width: 0;
+          text-decoration: none;
+        }
+        .author-name,
+        .photo-detail-meta-value {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
         .author-avatar {
           width: 28px;
           height: 28px;
+          flex: 0 0 28px;
           border-radius: 50%;
           overflow: hidden;
           border: 1px solid ${tokens.colors.border};
@@ -577,12 +597,13 @@ export function PhotoDetail() {
           <p className="photo-detail-description">{photo.description || 'Sin descripción disponible.'}</p>
 
           <div className="photo-detail-meta-grid" style={s.metaGrid}>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.colors.textMuted, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Autor</p>
               {authorProfilePath ? (
                 <Link
                   to={authorProfilePath}
                   className="author-link"
+                  title={`@${photo.profiles?.username || photo.profiles?.full_name || 'Participante'}`}
                 >
                   <span className="author-avatar">
                     {photo.profiles?.avatar_url ? (
@@ -591,24 +612,26 @@ export function PhotoDetail() {
                       (photo.profiles?.username || photo.profiles?.full_name || 'U').charAt(0).toUpperCase()
                     )}
                   </span>
-                  @{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}
+                  <span className="author-name">@{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}</span>
                 </Link>
               ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
+                <div className="photo-detail-meta-value" style={{ fontWeight: 600 }} title={`@${photo.profiles?.username || photo.profiles?.full_name || 'Participante'}`}>
                   @{photo.profiles?.username || photo.profiles?.full_name || 'Participante'}
                 </div>
               )}
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.colors.textMuted, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Comunidad</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
-                <MapPin size={16} color={tokens.colors.accent} /> {photo.regions?.name || 'Comunidad desconocida'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, minWidth: 0 }} title={photo.regions?.name || 'Comunidad desconocida'}>
+                <MapPin size={16} color={tokens.colors.accent} style={{ flex: '0 0 auto' }} />
+                <span className="photo-detail-meta-value">{photo.regions?.name || 'Comunidad desconocida'}</span>
               </div>
             </div>
-            <div>
+            <div style={{ minWidth: 0 }}>
               <p style={{ fontSize: '0.75rem', fontWeight: 700, color: tokens.colors.textMuted, marginBottom: '0.5rem', textTransform: 'uppercase' }}>Categoría</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600 }}>
-                <Tag size={16} color={tokens.colors.accent} /> {photo.categories?.name || 'Varios / General'}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 600, minWidth: 0 }} title={photo.categories?.name || 'Varios / General'}>
+                <Tag size={16} color={tokens.colors.accent} style={{ flex: '0 0 auto' }} />
+                <span className="photo-detail-meta-value">{photo.categories?.name || 'Varios / General'}</span>
               </div>
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
@@ -623,14 +646,14 @@ export function PhotoDetail() {
             <div style={{ position: 'relative', flex: 1 }}>
               <button 
                 onClick={handleToggleVote}
-                disabled={!user || isContestClosed}
+                disabled={!user || isContestClosed || votePending}
                 style={{ 
                   ...s.btnMain, 
                   width: '100%',
                   background: (user && hasVoted) ? tokens.colors.accent : '#000',
                   opacity: (user && !isContestClosed) ? 1 : 0.3,
                   filter: (user && !isContestClosed) ? 'none' : 'grayscale(1)',
-                  cursor: (user && !isContestClosed) ? 'pointer' : 'not-allowed'
+                  cursor: (user && !isContestClosed && !votePending) ? 'pointer' : 'not-allowed'
                 }}
               >
                 <Heart size={20} fill={(user && hasVoted) ? '#fff' : 'none'} />

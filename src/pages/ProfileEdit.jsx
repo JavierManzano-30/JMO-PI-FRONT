@@ -32,6 +32,24 @@ const tokens = {
   }
 };
 
+const USERNAME_MAX_LENGTH = 20;
+const DISPLAY_NAME_MAX_LENGTH = 100;
+
+function normalizeUsername(value) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9_]/g, '')
+    .slice(0, USERNAME_MAX_LENGTH);
+}
+
+function normalizeDisplayName(value) {
+  return String(value || '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, DISPLAY_NAME_MAX_LENGTH);
+}
+
 const s = {
   container: {
     maxWidth: '1000px',
@@ -88,6 +106,7 @@ const s = {
   },
   input: {
     width: '100%',
+    boxSizing: 'border-box',
     padding: '1rem 1.5rem',
     borderRadius: '1rem',
     border: `2px solid ${tokens.colors.border}`,
@@ -106,6 +125,7 @@ const s = {
     display: 'flex',
     alignItems: 'center',
     gap: '0.75rem',
+    minWidth: 0,
     fontSize: '0.875rem',
     color: tokens.colors.text,
     boxShadow: '0 4px 6px rgba(0,0,0,0.02)',
@@ -146,6 +166,7 @@ export function ProfileEdit() {
   });
   const [loading, setLoading] = useState(!user);
   const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState('');
   const [avatarFile, setAvatarFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(user?.avatar_url || '');
 
@@ -188,12 +209,26 @@ export function ProfileEdit() {
     e.preventDefault();
     setSaving(true);
     try {
+      const sanitizedUsername = normalizeUsername(profileData.username);
+      const sanitizedDisplayName = normalizeDisplayName(profileData.fullName);
+
+      if (sanitizedUsername.length < 3) {
+        setFormError('El nombre de usuario debe tener entre 3 y 50 caracteres.');
+        return;
+      }
+
+      if (!sanitizedDisplayName) {
+        setFormError('El alias no puede estar vacío.');
+        return;
+      }
+
+      setFormError('');
+
       let finalAvatarUrl = profileData.avatarUrl;
       if (avatarFile) {
         finalAvatarUrl = await uploadImage(avatarFile, user.id);
       }
 
-      const sanitizedUsername = profileData.username.toLowerCase().replace(/\s/g, '');
       const numericUserId = Number.isInteger(user?.backendId) && user.backendId > 0 ? user.backendId : null;
       const canUpdateBackendUser = Number.isInteger(numericUserId) && numericUserId > 0;
 
@@ -203,7 +238,7 @@ export function ProfileEdit() {
           .from('users')
           .update({
             username: sanitizedUsername,
-            display_name: profileData.fullName,
+            display_name: sanitizedDisplayName,
             avatar_url: finalAvatarUrl
           })
           .eq('id', numericUserId);
@@ -215,7 +250,7 @@ export function ProfileEdit() {
       const { error: authError } = await supabase.auth.updateUser({
         data: {
           username: sanitizedUsername,
-          full_name: profileData.fullName,
+          full_name: sanitizedDisplayName,
           avatar_url: finalAvatarUrl
         }
       });
@@ -272,8 +307,20 @@ export function ProfileEdit() {
             label:hover .avatar-overlay { opacity: 1 !important; }
           `}</style>
 
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 800, margin: '0 0 0.5rem', color: 'var(--text)' }}>
-            {profileData.username ? `@${profileData.username.toLowerCase().replace(/\s/g, '')}` : 'Configura tu usuario'}
+          <h2
+            title={profileData.username ? `@${normalizeUsername(profileData.username)}` : undefined}
+            style={{
+              fontSize: '1.25rem',
+              fontWeight: 800,
+              margin: '0 0 0.5rem',
+              color: 'var(--text)',
+              maxWidth: '100%',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {profileData.username ? `@${normalizeUsername(profileData.username)}` : 'Configura tu usuario'}
           </h2>
           <p style={{ fontSize: '0.875rem', color: tokens.colors.textMuted, margin: 0 }}>Visualiza cómo te verán los demás.</p>
         </div>
@@ -286,9 +333,16 @@ export function ProfileEdit() {
               <input 
                 style={s.input} 
                 value={profileData.username} 
-                onChange={e => setProfileData({...profileData, username: e.target.value.toLowerCase().replace(/\s/g, '')})}
+                onChange={e => setProfileData({...profileData, username: normalizeUsername(e.target.value)})}
                 placeholder="ej: javier_dev"
+                minLength={3}
+                maxLength={USERNAME_MAX_LENGTH}
+                autoComplete="username"
               />
+              <div style={{ marginTop: '0.45rem', display: 'flex', justifyContent: 'space-between', gap: '1rem', color: tokens.colors.textMuted, fontSize: '0.78rem' }}>
+                <span>Solo letras, números y guion bajo.</span>
+                <span>{profileData.username.length}/{USERNAME_MAX_LENGTH}</span>
+              </div>
             </div>
 
             <div style={{ marginBottom: '2rem' }}>
@@ -296,22 +350,30 @@ export function ProfileEdit() {
               <input 
                 style={s.input} 
                 value={profileData.fullName} 
-                onChange={e => setProfileData({...profileData, fullName: e.target.value})}
+                onChange={e => setProfileData({...profileData, fullName: e.target.value.slice(0, DISPLAY_NAME_MAX_LENGTH)})}
                 placeholder="Tu nombre real o artístico"
+                maxLength={DISPLAY_NAME_MAX_LENGTH}
               />
+              <div style={{ marginTop: '0.45rem', textAlign: 'right', color: tokens.colors.textMuted, fontSize: '0.78rem' }}>
+                {profileData.fullName.length}/{DISPLAY_NAME_MAX_LENGTH}
+              </div>
             </div>
 
             <div style={{ borderTop: '1px solid var(--border)', margin: '2rem 0', pt: '2rem' }} />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '1rem' }}>
               <div style={s.badge}>
                 <Mail size={16} color={tokens.colors.textMuted} />
-                {user?.email}
+                <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={user?.email}>
+                  {user?.email}
+                </span>
               </div>
-              <div style={{ ...s.badge, justifyContent: 'space-between', flex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  <MapPin size={16} color={tokens.colors.accent} />
-                  {profileData.regionName}
+              <div style={{ ...s.badge, justifyContent: 'space-between', flex: 1, flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
+                  <MapPin size={16} color={tokens.colors.accent} style={{ flex: '0 0 auto' }} />
+                  <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={profileData.regionName}>
+                    {profileData.regionName}
+                  </span>
                 </div>
                 {!showRegionRequest && (
                   <button 
@@ -362,6 +424,12 @@ export function ProfileEdit() {
               </div>
             )}
           </div>
+
+          {formError && (
+            <p style={{ margin: '0.85rem 0 0', color: '#ef4444', fontSize: '0.9rem', fontWeight: 700 }}>
+              {formError}
+            </p>
+          )}
 
           <div style={{ background: 'rgba(37, 99, 235, 0.1)', padding: '1.5rem', borderRadius: '1.5rem', border: `1px solid rgba(37, 99, 235, 0.25)` }}>
             <p style={{ fontSize: '0.9rem', color: tokens.colors.accent, lineHeight: 1.6, margin: 0 }}>

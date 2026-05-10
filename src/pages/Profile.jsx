@@ -218,12 +218,22 @@ export function Profile() {
             )}
           </div>
 
-          <div style={{ flex: 1, minWidth: '260px' }}>
+          <div style={{ flex: '1 1 260px', minWidth: 0 }}>
             <p style={{ color: '#3b82f6', fontWeight: 800, fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem' }}>
               {isOwnProfile ? 'Tu perfil' : 'Perfil público'}
             </p>
-            <h1 style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--text)', margin: '0 0 0.45rem', letterSpacing: '-0.02em' }}>{profileDisplayName}</h1>
-            <p style={{ color: 'var(--muted)', fontSize: '1rem', margin: '0 0 1rem' }}>@{profileUsername} · {profileEmail}</p>
+            <h1
+              title={profileDisplayName}
+              style={{ fontSize: '2.2rem', fontWeight: 900, color: 'var(--text)', margin: '0 0 0.45rem', letterSpacing: '-0.02em', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              {profileDisplayName}
+            </h1>
+            <p
+              title={`@${profileUsername} · ${profileEmail}`}
+              style={{ color: 'var(--muted)', fontSize: '1rem', margin: '0 0 1rem', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
+              @{profileUsername} · {profileEmail}
+            </p>
 
             <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.85rem', background: '#eff6ff', color: '#2563eb', borderRadius: '999px', fontSize: '0.84rem', fontWeight: 600 }}>

@@ -175,6 +175,7 @@ export function Dashboard() {
   const [shareResults, setShareResults] = useState([]);
   const [sendingToUserId, setSendingToUserId] = useState(null);
   const [shareAnchorRect, setShareAnchorRect] = useState(null);
+  const [votePendingIds, setVotePendingIds] = useState(() => new Set());
   const [theme, setTheme] = useState(() => document.documentElement.getAttribute('data-theme') || 'light');
   const isDark = theme === 'dark';
   const rawBackendUserId = user?.backendId ?? user?.id;
@@ -263,6 +264,7 @@ export function Dashboard() {
     e.preventDefault();
     e.stopPropagation();
     if (!user) return navigate('/login');
+    if (votePendingIds.has(photoId)) return;
     if (!canWriteData) {
       setToastMsg('Tu cuenta actual no está enlazada para votar en esta base de datos.');
       setTimeout(() => setToastMsg(null), 3000);
@@ -276,25 +278,40 @@ export function Dashboard() {
       return;
     }
 
+    const nextHasVoted = !hasVoted;
+    const voteDelta = hasVoted ? -1 : 1;
+    const applyVoteState = (targetHasVoted, delta) => {
+      setSubmissions(prev => prev.map(s => (
+        s.id === photoId
+          ? {
+            ...s,
+            hasVoted: targetHasVoted,
+            voteCount: Math.max(0, Number(s.voteCount || 0) + delta),
+          }
+          : s
+      )));
+    };
+
+    setVotePendingIds(prev => new Set(prev).add(photoId));
+    applyVoteState(nextHasVoted, voteDelta);
+
     try {
       if (hasVoted) {
         await deleteVote(photoId);
       } else {
         await createVote(photoId);
       }
-      
-      setSubmissions(prev => prev.map(s => {
-        if (s.id === photoId) {
-          return {
-            ...s,
-            hasVoted: !hasVoted,
-            voteCount: hasVoted ? s.voteCount - 1 : s.voteCount + 1
-          };
-        }
-        return s;
-      }));
     } catch (err) {
       console.error(err);
+      applyVoteState(hasVoted, -voteDelta);
+      setToastMsg('No se pudo actualizar el voto. Inténtalo de nuevo.');
+      setTimeout(() => setToastMsg(null), 3000);
+    } finally {
+      setVotePendingIds(prev => {
+        const next = new Set(prev);
+        next.delete(photoId);
+        return next;
+      });
     }
   };
 
@@ -647,6 +664,7 @@ export function Dashboard() {
                   <div style={{ position: 'relative' }}>
                     {(() => {
                       const contestClosed = item?.contests?.is_active === false;
+                      const votePending = votePendingIds.has(item.id);
                       return (
                     <button 
                       onClick={(e) => {
@@ -661,12 +679,12 @@ export function Dashboard() {
                           handleToggleVote(e, item.id, item.hasVoted);
                         }
                       }}
-                      disabled={contestClosed}
+                      disabled={contestClosed || votePending}
                       style={{ 
                         ...s.actionBtn, 
                         opacity: (!user || contestClosed) ? 0.4 : 1, 
                         filter: (!user || contestClosed) ? 'grayscale(1)' : 'none',
-                        cursor: contestClosed ? 'not-allowed' : 'pointer'
+                        cursor: (contestClosed || votePending) ? 'not-allowed' : 'pointer'
                       }} 
                       className={`action-icon heart-btn ${(user && item.hasVoted) ? 'heart-active' : ''}`}
                     >
