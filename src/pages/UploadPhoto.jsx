@@ -165,6 +165,11 @@ export function UploadPhoto() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isDragging, setIsDragging] = useState(false);
+  const selectedContest = useMemo(
+    () => options.contests.find(c => String(c.id) === String(formData.contestId)) || null,
+    [options.contests, formData.contestId]
+  );
+  const hasActiveContests = options.contests.length > 0;
 
   // 1. Cargar opciones básicas
   useEffect(() => {
@@ -233,6 +238,7 @@ export function UploadPhoto() {
     if (!file) return setError('Es obligatorio subir una fotografía.');
     if (!formData.title) return setError('Escribe un título para tu obra.');
     if (!formData.contestId) return setError('Selecciona el concurso en el que participas.');
+    if (!selectedContest) return setError('Este concurso ya no está activo. Elige un concurso abierto.');
 
     setLoading(true);
     setError('');
@@ -407,8 +413,8 @@ export function UploadPhoto() {
             <div className="upload-form-section-grid">
               <div style={s.inputGroup}>
                 <label style={s.label}><Trophy size={14} /> Concurso</label>
-                <select style={s.select} value={formData.contestId} onChange={e => setFormData(p => ({ ...p, contestId: e.target.value }))} required>
-                  <option value="">Selecciona concurso</option>
+                <select style={s.select} value={formData.contestId} onChange={e => setFormData(p => ({ ...p, contestId: e.target.value }))} disabled={!hasActiveContests} required>
+                  <option value="">{hasActiveContests ? 'Selecciona concurso' : 'No hay concursos activos'}</option>
                   {options.contests.map(c => <option key={c.id} value={c.id}>{c.title}</option>)}
                 </select>
               </div>
@@ -459,7 +465,7 @@ export function UploadPhoto() {
               </div>
             )}
 
-            <button type="submit" className="upload-submit" disabled={loading} style={s.submitBtn}>
+            <button type="submit" className="upload-submit" disabled={loading || !hasActiveContests} style={s.submitBtn}>
               {loading ? 'Subiendo...' : 'Publicar Fotografía'}
             </button>
           </form>
@@ -478,7 +484,7 @@ export function UploadPhoto() {
               <label style={s.label}>Concurso</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#334155', fontSize: '0.875rem', marginTop: '0.25rem' }}>
                 <Trophy size={14} color="#f59e0b" />
-                {options.contests.find(c => String(c.id) === String(formData.contestId))?.title || 'Pendiente'}
+                {selectedContest?.title || 'Pendiente'}
               </div>
             </div>
             <div>

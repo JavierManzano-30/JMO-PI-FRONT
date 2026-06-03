@@ -21,6 +21,7 @@ const Chat = lazy(() => import('./pages/Chat.jsx').then((m) => ({ default: m.Cha
 const Forbidden = lazy(() => import('./pages/Forbidden.jsx').then((m) => ({ default: m.Forbidden })));
 const NotFound = lazy(() => import('./pages/NotFound.jsx').then((m) => ({ default: m.NotFound })));
 const Winners = lazy(() => import('./pages/Winners.jsx').then((m) => ({ default: m.Winners })));
+const OfficialWinners = lazy(() => import('./pages/OfficialWinners.jsx').then((m) => ({ default: m.OfficialWinners })));
 const ContestDetail = lazy(() => import('./pages/ContestDetail.jsx').then((m) => ({ default: m.ContestDetail })));
 const AdminPanel = lazy(() => import('./pages/AdminPanel.jsx').then((m) => ({ default: m.AdminPanel })));
 const ForgotPassword = lazy(() => import('./pages/ForgotPassword.jsx').then((m) => ({ default: m.ForgotPassword })));
@@ -75,7 +76,7 @@ export function App() {
               <Route path="/no-session" element={<NoSession />} />
               <Route path="/contests" element={<Winners />} />
               <Route path="/contests/:themeId" element={<ContestDetail />} />
-              <Route path="/winners" element={<Navigate to="/contests" replace />} />
+              <Route path="/winners" element={<OfficialWinners />} />
               <Route path="/legal-notice" element={<LegalNotice />} />
               <Route path="/privacy-policy" element={<PrivacyPolicy />} />
               <Route path="/cookie-policy" element={<CookiePolicy />} />
@@ -101,7 +102,7 @@ export function App() {
               <Route path="photos/:photoId/closed" element={<PhotoDetailClosed />} />
               <Route path="contests" element={<Winners />} />
               <Route path="contests/:themeId" element={<ContestDetail />} />
-              <Route path="winners" element={<Navigate to="../contests" replace />} />
+              <Route path="winners" element={<OfficialWinners />} />
               <Route path="profile" element={<Profile />} />
               <Route path="users/:userId" element={<Profile />} />
               <Route path="profile/edit" element={<ProfileEdit />} />
@@ -123,5 +124,4 @@ export function App() {
     </AuthProvider>
   );
 }
-
 

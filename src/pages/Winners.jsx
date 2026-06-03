@@ -26,7 +26,8 @@ import { listWinners } from '../services/winnersService.js';
 const HISTORY_PAGE_SIZE = 12; // Adjusted for the new layout
 const ACTIVE_RANK_LIMIT = 5;
 const ACTIVE_FETCH_LIMIT = 60;
-const OFFICIAL_FETCH_LIMIT = 24;
+const OFFICIAL_PREVIEW_LIMIT = 4;
+const UPCOMING_FETCH_LIMIT = 100;
 
 const dateFormatter = new Intl.DateTimeFormat('es-ES', {
   day: '2-digit',
@@ -54,6 +55,16 @@ function getFeaturedEntry(group) {
 
 function getThemeDateRange(group) {
   return formatDateRange(group.themeStartDate, group.themeEndDate);
+}
+
+function getDaysUntil(value, now) {
+  if (!value) return null;
+  const startDate = new Date(value);
+  if (Number.isNaN(startDate.getTime())) return null;
+  const today = new Date(now);
+  today.setHours(0, 0, 0, 0);
+  startDate.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.ceil((startDate.getTime() - today.getTime()) / (24 * 60 * 60 * 1000)));
 }
 
 function ContestStatusBadge({ active }) {
@@ -181,6 +192,33 @@ function ContestCard({ group, isActive, contestsBasePath, isAuthenticated, now }
   );
 }
 
+function UpcomingContestCard({ theme, now }) {
+  const daysUntil = getDaysUntil(theme.start_date || theme.startDate, now);
+  const startsLabel = daysUntil === null
+    ? 'Fecha por confirmar'
+    : daysUntil === 0
+      ? 'Empieza hoy'
+      : `Empieza en ${daysUntil} ${daysUntil === 1 ? 'día' : 'días'}`;
+
+  return (
+    <article className="upcoming-contest-card">
+      <div className="upcoming-contest-date">
+        <CalendarDays size={18} />
+        <strong>{startsLabel}</strong>
+      </div>
+      <div>
+        <p className="contest-overline">{theme.community_name || theme.communityName || 'Comunidad general'}</p>
+        <h3>{theme.title}</h3>
+        {theme.description && <p>{theme.description}</p>}
+      </div>
+      <div className="contest-meta">
+        <ContestMeta icon={<CalendarDays size={15} />} label={formatDateRange(theme.start_date || theme.startDate, theme.end_date || theme.endDate)} />
+        <ContestMeta icon={<MapPin size={15} />} label={theme.community_name || theme.communityName || 'Todas las regiones'} />
+      </div>
+    </article>
+  );
+}
+
 function groupEntriesByTheme(entries, themes = []) {
   const groups = new Map();
 
@@ -232,9 +270,14 @@ export function Winners() {
   const [activeThemes, setActiveThemes] = useState([]);
   const [now, setNow] = useState(() => new Date());
 
+  const [upcomingStatus, setUpcomingStatus] = useState('loading');
+  const [upcomingError, setUpcomingError] = useState('');
+  const [upcomingThemes, setUpcomingThemes] = useState([]);
+
   const [officialStatus, setOfficialStatus] = useState('loading');
   const [officialError, setOfficialError] = useState('');
   const [officialEntries, setOfficialEntries] = useState([]);
+  const [officialMeta, setOfficialMeta] = useState({ total: 0 });
 
   const [historyStatus, setHistoryStatus] = useState('loading');
   const [historyError, setHistoryError] = useState('');
@@ -299,19 +342,40 @@ export function Winners() {
     try {
       const response = await listWinners({
         page: 1,
-        limit: OFFICIAL_FETCH_LIMIT,
+        limit: OFFICIAL_PREVIEW_LIMIT,
         communityId: filters.communityId || undefined,
         themeState: 'closed',
-        officialOnly: true,
         rankLimit: 1,
       });
 
       const rows = response.data || [];
       setOfficialEntries(rows);
+      setOfficialMeta(response.meta || { total: rows.length });
       setOfficialStatus(rows.length ? 'default' : 'empty');
     } catch (requestError) {
       setOfficialStatus('error');
       setOfficialError(requestError instanceof ApiError ? requestError.message : 'No se pudo cargar el resumen.');
+    }
+  }, [filters.communityId]);
+
+  const loadUpcomingThemes = useCallback(async () => {
+    setUpcomingStatus('loading');
+    setUpcomingError('');
+
+    try {
+      const response = await listThemes({
+        page: 1,
+        limit: UPCOMING_FETCH_LIMIT,
+        state: 'future',
+        communityId: filters.communityId || undefined,
+      });
+
+      const rows = response.data || [];
+      setUpcomingThemes(rows);
+      setUpcomingStatus(rows.length ? 'default' : 'empty');
+    } catch (requestError) {
+      setUpcomingStatus('error');
+      setUpcomingError(requestError instanceof ApiError ? requestError.message : 'No se pudieron cargar los próximos concursos.');
     }
   }, [filters.communityId]);
 
@@ -340,8 +404,9 @@ export function Winners() {
 
   useEffect(() => {
     loadActiveRanking();
+    loadUpcomingThemes();
     loadOfficialWinners();
-  }, [loadActiveRanking, loadOfficialWinners]);
+  }, [loadActiveRanking, loadOfficialWinners, loadUpcomingThemes]);
 
   useEffect(() => {
     loadClosedHistory();
@@ -372,9 +437,11 @@ export function Winners() {
   const activeByTheme = useMemo(() => groupEntriesByTheme(activeEntries, activeThemes), [activeEntries, activeThemes]);
   const closedByTheme = useMemo(() => groupEntriesByTheme(historyEntries), [historyEntries]);
   const contestsBasePath = isAuthenticated ? '/app/contests' : '/contests';
+  const winnersPath = isAuthenticated ? '/app/winners' : '/winners';
   const featuredActive = activeByTheme[0] || null;
   const activeVotes = useMemo(() => getTotalVotes(activeEntries), [activeEntries]);
   const officialVotes = useMemo(() => getTotalVotes(officialEntries), [officialEntries]);
+  const officialTotal = officialMeta.total || officialEntries.length;
 
   const handleFilterChange = (key, value) => {
     const next = new URLSearchParams(params);
@@ -414,12 +481,12 @@ export function Winners() {
             <strong>{activeByTheme.length}</strong>
           </div>
           <div className="hero-stat">
-            <span><Vote size={16} /> Votos visibles</span>
+            <span><Vote size={16} /> Votos activos</span>
             <strong>{activeVotes}</strong>
           </div>
           <div className="hero-stat">
             <span><Award size={16} /> Ganadores</span>
-            <strong>{officialEntries.length}</strong>
+            <strong>{officialTotal}</strong>
           </div>
         </aside>
       </header>
@@ -445,6 +512,36 @@ export function Winners() {
             ))}
           </select>
         </label>
+      </section>
+
+      <section className="winners-section">
+        <div className="winners-section-head">
+          <div>
+            <span className="section-kicker section-kicker-upcoming">
+              <CalendarDays size={14} /> PRÓXIMOS CONCURSOS
+            </span>
+            <h2>Concursos futuros</h2>
+          </div>
+          <p className="section-subtitle">Todas las rondas programadas que todavía no han empezado</p>
+        </div>
+
+        {upcomingStatus === 'loading' && <StatusMessage tone="loading">Cargando próximos concursos...</StatusMessage>}
+        {upcomingStatus === 'error' && <StatusMessage tone="error">{upcomingError}</StatusMessage>}
+        {upcomingStatus === 'empty' && (
+          <div className="contest-empty-state compact">
+            <CalendarDays size={26} />
+            <h3>No hay concursos futuros programados</h3>
+            <p>Cuando se planifiquen nuevas rondas aparecerán aquí antes de abrirse.</p>
+          </div>
+        )}
+
+        {upcomingStatus === 'default' && (
+          <div className="upcoming-contest-grid">
+            {upcomingThemes.map((theme) => (
+              <UpcomingContestCard key={`upcoming-${theme.id}`} theme={theme} now={now} />
+            ))}
+          </div>
+        )}
       </section>
 
       <section className="winners-section">
@@ -492,7 +589,7 @@ export function Winners() {
             </span>
             <h2>Ganadores oficiales</h2>
           </div>
-          <p className="section-subtitle">{officialVotes} votos acumulados en concursos cerrados</p>
+          <p className="section-subtitle">{officialVotes} votos en los últimos ganadores</p>
         </div>
 
         {officialStatus === 'loading' && <StatusMessage tone="loading">Abriendo el salón...</StatusMessage>}
@@ -506,30 +603,40 @@ export function Winners() {
         )}
 
         {officialStatus === 'default' && (
-          <div className="hall-of-fame-grid">
-            {officialEntries.map((entry) => (
-              <article className="hall-card" key={`official-${entry.themeId}-${entry.photoId}`}>
-                <img src={entry.image} alt={entry.photoTitle} className="hall-img" />
-                <div className="hall-overlay">
-                  <span className="badge">Ganador</span>
-                  <p>{entry.themeTitle}</p>
-                  <h3>{entry.photoTitle}</h3>
-                  <div className="hall-footer">
-                    <div className="hall-author">
-                      <Award size={16} color="#f59e0b" /> {entry.authorDisplayName}
+          <>
+            <div className="hall-of-fame-grid">
+              {officialEntries.map((entry) => (
+                <article className="hall-card" key={`official-${entry.themeId}-${entry.photoId}`}>
+                  <img src={entry.image} alt={entry.photoTitle} className="hall-img" />
+                  <div className="hall-overlay">
+                    <span className="badge">Ganador</span>
+                    <p>{entry.themeTitle}</p>
+                    <h3>{entry.photoTitle}</h3>
+                    <div className="hall-footer">
+                      <div className="hall-author">
+                        <Award size={16} color="#f59e0b" /> {entry.authorDisplayName}
+                      </div>
+                      <div className="hall-votes">{entry.votes} pts</div>
                     </div>
-                    <div className="hall-votes">{entry.votes} pts</div>
+                    <Link
+                      to={`${isAuthenticated ? '../photos' : '/photos'}/${entry.photoId}`}
+                      state={{ from: `${contestsBasePath}/${entry.themeId}`, fromLabel: 'Volver al concurso' }}
+                      style={{ position: 'absolute', inset: 0, zIndex: 2 }}
+                      aria-label="Ver detalle"
+                    />
                   </div>
-                  <Link 
-                    to={`${isAuthenticated ? '../photos' : '/photos'}/${entry.photoId}`} 
-                    state={{ from: `${contestsBasePath}/${entry.themeId}`, fromLabel: 'Volver al concurso' }}
-                    style={{ position: 'absolute', inset: 0, zIndex: 2 }}
-                    aria-label="Ver detalle"
-                  />
-                </div>
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+            {officialTotal > officialEntries.length && (
+              <div className="contest-card-actions hall-actions">
+                <Link className="contest-secondary-action" to={winnersPath}>
+                  Mostrar ganadores de los últimos concursos
+                  <ArrowRight size={16} />
+                </Link>
+              </div>
+            )}
+          </>
         )}
       </section>
 

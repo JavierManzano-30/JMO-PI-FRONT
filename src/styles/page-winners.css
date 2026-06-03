@@ -228,6 +228,10 @@
   color: #b7791f;
 }
 
+.section-kicker-upcoming {
+  color: #2563eb;
+}
+
 .section-kicker-muted {
   color: var(--muted);
 }
@@ -246,6 +250,48 @@
 
 .contest-grid-featured {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr));
+}
+
+.upcoming-contest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
+  gap: 1rem;
+}
+
+.upcoming-contest-card {
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  min-height: 220px;
+  padding: 1.1rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.upcoming-contest-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #bfdbfe;
+  border-radius: 8px;
+  color: #1d4ed8;
+  background: #eff6ff;
+  font-size: 0.84rem;
+}
+
+.upcoming-contest-card h3 {
+  margin: 0.25rem 0 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.upcoming-contest-card p {
+  margin: 0.45rem 0 0;
+  color: var(--muted);
+  line-height: 1.5;
 }
 
 .contest-card {
@@ -538,6 +584,11 @@
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
   gap: 1rem;
+}
+
+.hall-actions {
+  margin-top: 1rem;
+  justify-content: flex-end;
 }
 
 .hall-card {

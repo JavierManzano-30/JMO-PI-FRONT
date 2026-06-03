@@ -30,6 +30,11 @@ function appendUsernameSuffix(base, suffix) {
   return `${head}_${safeSuffix}`;
 }
 
+function getAuthAvatarUrl(authUser) {
+  const metadata = authUser?.user_metadata || {};
+  return metadata.avatar_url || metadata.picture || null;
+}
+
 function isConflictError(error) {
   const code = String(error?.code || '');
   const msg = String(error?.message || '').toLowerCase();
@@ -47,6 +52,26 @@ function isMissingTableError(error, tableName) {
     (msg.includes('schema cache') && msg.includes(normalizedTableName)) ||
     msg.includes(`relation "${normalizedTableName}" does not exist`)
   );
+}
+
+function getLocalDateOnly(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function isThemeCurrentlyActive(theme, today = getLocalDateOnly()) {
+  if (!theme?.is_active || !theme?.start_date || !theme?.end_date) return false;
+  return String(theme.start_date).slice(0, 10) <= today && String(theme.end_date).slice(0, 10) >= today;
+}
+
+function normalizeContestState(contest, today = getLocalDateOnly()) {
+  if (!contest) return null;
+  return {
+    ...contest,
+    is_active: isThemeCurrentlyActive(contest, today),
+  };
 }
 
 async function findBackendUserIdByEmail(email) {
@@ -74,6 +99,25 @@ async function findBackendUserById(id) {
     .eq('id', id)
     .maybeSingle();
   if (error) return null;
+  return data || null;
+}
+
+async function syncBackendAvatarIfMissing(id, avatarUrl) {
+  if (!id || !avatarUrl) return null;
+
+  const { data, error } = await supabase
+    .from('users')
+    .update({ avatar_url: avatarUrl })
+    .eq('id', id)
+    .is('avatar_url', null)
+    .select('id, username, display_name, avatar_url, community_id')
+    .maybeSingle();
+
+  if (error) {
+    console.warn('No se pudo sincronizar avatar_url en users:', error);
+    return null;
+  }
+
   return data || null;
 }
 
@@ -124,6 +168,7 @@ async function createBackendUser(authUser) {
     email.split('@')[0];
   const normalizedBaseUsername = normalizeUsername(baseUsername);
   const displayName = metadata.full_name || metadata.name || baseUsername;
+  const avatarUrl = getAuthAvatarUrl(authUser);
   const baseTaken = await isUsernameTakenCaseInsensitive(normalizedBaseUsername, email);
   const usernameCandidates = [];
   usernameCandidates.push(baseTaken
@@ -140,6 +185,7 @@ async function createBackendUser(authUser) {
         username,
         email,
         display_name: displayName || null,
+        avatar_url: avatarUrl,
         community_id: communityId,
         password_hash: '__supabase_auth_managed__',
       },
@@ -147,16 +193,19 @@ async function createBackendUser(authUser) {
         username,
         email,
         display_name: displayName || null,
+        avatar_url: avatarUrl,
         community_id: communityId,
       },
       {
         username,
         email,
         display_name: displayName || null,
+        avatar_url: avatarUrl,
       },
       {
         username,
         email,
+        avatar_url: avatarUrl,
       },
     ];
 
@@ -207,8 +256,12 @@ export async function resolveBackendUserId(authUser, { createIfMissing = true } 
 export async function resolveBackendUser(authUser, { createIfMissing = true } = {}) {
   const id = await resolveBackendUserId(authUser, { createIfMissing });
   if (!id) return null;
-  const backendUser = await findBackendUserById(id);
+  let backendUser = await findBackendUserById(id);
   if (!backendUser) return { id };
+  const authAvatarUrl = getAuthAvatarUrl(authUser);
+  if (!backendUser.avatar_url && authAvatarUrl) {
+    backendUser = await syncBackendAvatarIfMissing(id, authAvatarUrl) || { ...backendUser, avatar_url: authAvatarUrl };
+  }
   const communityName = await findCommunityNameById(backendUser.community_id);
   return {
     ...backendUser,
@@ -255,14 +308,17 @@ export async function signIn(email, password) {
  */
 
 export async function getContests() {
+  const today = getLocalDateOnly();
   const { data, error } = await supabase
     .from('themes')
     .select('*')
     .eq('is_active', true)
+    .lte('start_date', today)
+    .gte('end_date', today)
     .order('created_at', { ascending: false })
 
   if (error) throw error
-  return data
+  return (data || []).map(theme => normalizeContestState(theme, today)).filter(theme => theme?.is_active)
 }
 
 export async function getCategories() {
@@ -325,6 +381,17 @@ export async function createSubmission({
   title,
   description
 }) {
+  const { data: contest, error: contestError } = await supabase
+    .from('themes')
+    .select('id, is_active, start_date, end_date')
+    .eq('id', contestId)
+    .maybeSingle();
+
+  if (contestError) throw contestError
+  if (!isThemeCurrentlyActive(contest)) {
+    throw new Error('Este concurso ya no está activo. Solo puedes subir fotos a concursos abiertos.');
+  }
+
   const { data, error } = await supabase
     .from('photos')
     .insert([
@@ -387,10 +454,12 @@ export async function getSubmissions(filters = {}, currentUserId = null) {
       (canResolveUserVotes && submissionIds.length > 0) ? supabase.from('votes').select('photo_id').eq('user_id', numericCurrentUserId).in('photo_id', submissionIds) : Promise.resolve({ data: [] })
     ]);
 
+    const today = getLocalDateOnly();
+
     return submissions.map(s => ({
       ...s,
       profiles: profiles?.find(p => p.id === s.user_id) || null,
-      contests: contests?.find(c => c.id === s.theme_id) || null,
+      contests: normalizeContestState(contests?.find(c => c.id === s.theme_id), today),
       categories: categories?.find(c => c.id === s.category_id) || null,
       voteCount: allVotes?.filter(v => v.photo_id === s.id).length || 0,
       hasVoted: userVotes ? userVotes.some(v => v.photo_id === s.id) : false
@@ -428,10 +497,12 @@ export async function getSubmissionById(id) {
     let regionName = 'Comunidad desconocida';
     if (reg && reg.name) regionName = reg.name;
 
+    const today = getLocalDateOnly();
+
     return {
       ...submission,
       profiles: profile,
-      contests: contest,
+      contests: normalizeContestState(contest, today),
       categories: category,
       regions: { name: regionName }
     };

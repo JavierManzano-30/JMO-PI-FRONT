@@ -6,6 +6,7 @@ export async function listThemes(params = {}) {
       page: params.page,
       limit: params.limit,
       is_active: params.isActive,
+      state: params.state,
       community_id: params.communityId,
     },
   });

@@ -138,6 +138,7 @@ export function Profile() {
   const profileDisplayName = profile?.display_name || profile?.username || 'Usuario';
   const profileEmail = profile?.email || 'Sin correo';
   const profileCommunity = profile?.community_name || 'Sin comunidad asignada';
+  const profileAvatarUrl = profile?.avatar_url || (isOwnProfile ? (user?.avatar_url || user?.avatarUrl || user?.user_metadata?.avatar_url || user?.user_metadata?.picture) : null);
 
   if (!viewedUserId) {
     return (
@@ -211,8 +212,8 @@ export function Profile() {
       <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'grid', gap: '2rem' }}>
         <article style={{ background: 'var(--surface)', borderRadius: '2rem', padding: '2.2rem', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.05)', border: '1px solid var(--border)', display: 'flex', gap: '2rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <div style={{ width: '132px', height: '132px', borderRadius: '50%', background: 'var(--surface-soft)', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '4px solid var(--surface)', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}>
-            {profile?.avatar_url ? (
-              <img src={profile.avatar_url} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} alt="Avatar" />
+            {profileAvatarUrl ? (
+              <img src={profileAvatarUrl} style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} alt="Avatar" />
             ) : (
               <User size={64} color="#cbd5e1" />
             )}
